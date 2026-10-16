@@ -8,6 +8,17 @@
 
 A local A2A bridge for Codex and Antigravity. Let Codex lead a design discussion or code review, ask the installed Antigravity CLI for another perspective, and resume that same conversation after restarting the bridge.
 
+**Install with your coding agent**
+
+Copy the prompt below and paste it into Codex:
+
+```text
+Read https://github.com/genielabs-io/duorbi/blob/main/INSTALL.md
+and install Duorbi for this project with project-scoped Codex integration.
+```
+
+Your agent can follow [INSTALL.md](INSTALL.md) to check prerequisites, preserve existing settings, and verify the installation.
+
 [한국어](README.ko.md) · [Agent installation](INSTALL.md) · [Codex setup](docs/codex-integration.md) · [Architecture](docs/architecture.md)
 
 ```mermaid
@@ -35,14 +46,6 @@ Duorbi uses Antigravity's documented headless CLI. It does not connect to existi
 - Python **3.13+**, [uv](https://docs.astral.sh/uv/), and an installed `agy` executable on `PATH`.
 - Authenticate using an interactive `agy` session in your project before making headless calls. Duorbi does not collect credentials or install Antigravity.
 - Linux runtime compatibility has not been verified. Native Windows is unsupported; the adapter uses POSIX file locks and process groups.
-
-## Install with your coding agent
-
-Give your agent this prompt:
-
-> Read https://github.com/genielabs-io/duorbi/blob/main/INSTALL.md and install Duorbi for this project, including project-scoped Codex integration. Preserve existing configuration and report which checks you actually ran.
-
-The [agent installation runbook](INSTALL.md) covers prerequisites, existing installations, configuration merging and verification without a model call.
 
 ## Install from this checkout
 
