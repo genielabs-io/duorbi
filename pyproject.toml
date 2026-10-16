@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "duorbi"
+version = "0.1.0a1"
+description = "Project-scoped local A2A text collaboration with Antigravity (macOS preview)"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Environment :: Console",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "a2acode==0.8.0",
+  "a2a-sdk>=1.1,<2",
+  "httpx>=0.28.1,<1",
+  "protobuf>=6.33.5,<7",
+  "uvicorn>=0.49,<1",
+]
+
+[project.scripts]
+duorbi = "duorbi.bridge:main"
+
+[project.urls]
+Homepage = "https://github.com/genielabs-io/duorbi"
+Repository = "https://github.com/genielabs-io/duorbi"
+Issues = "https://github.com/genielabs-io/duorbi/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/duorbi"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src/duorbi/*.py",
+  "/tests/*.py",
+  "/examples/**",
+  "/docs/**",
+  "/scripts/*.py",
+  "/README.md",
+  "/README.ko.md",
+  "/LICENSE",
+  "/THIRD_PARTY_NOTICES.md",
+  "/CONTRIBUTING.md",
+  "/SECURITY.md",
+  "/CHANGELOG.md",
+  "/pyproject.toml",
+  "/uv.lock",
+  "/.gitignore",
+  "/.github/workflows/*.yml",
+]
