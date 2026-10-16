@@ -2,6 +2,8 @@
 
 The command-line bridge works independently of Codex configuration. These examples make delegation convenient; they are optional and are not installed automatically.
 
+For an agent performing the installation, start with [INSTALL.md](../INSTALL.md). It defines installation scope, configuration preservation and completion checks.
+
 ## Make the executable visible
 
 Install from the checkout with `uv tool install --python 3.13 .`. In the execution environment used by Codex, verify:

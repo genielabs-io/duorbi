@@ -47,6 +47,7 @@ include = [
   "/scripts/*.py",
   "/README.md",
   "/README.ko.md",
+  "/INSTALL.md",
   "/LICENSE",
   "/THIRD_PARTY_NOTICES.md",
   "/CONTRIBUTING.md",

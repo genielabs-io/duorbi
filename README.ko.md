@@ -8,7 +8,7 @@
 
 Codex가 주도하고 Antigravity가 설계 논의와 코드 검토에 참여하는 로컬 A2A 브리지입니다. 프로젝트별 대화 ID를 저장해 서버를 다시 시작해도 같은 논의를 이어갑니다.
 
-[English](README.md) · [Codex 설정](docs/codex-integration.md) · [구조와 복원 원리](docs/architecture.md)
+[English](README.md) · [에이전트 설치 안내](INSTALL.md) · [Codex 설정](docs/codex-integration.md) · [구조와 복원 원리](docs/architecture.md)
 
 ```mermaid
 flowchart LR
@@ -36,7 +36,15 @@ Antigravity가 문서로 제공하는 headless CLI를 사용합니다. 기존 �
 - 작업할 프로젝트에서 대화형 `agy`를 실행해 로그인을 먼저 완료합니다. Duorbi는 인증정보를 수집하거나 Antigravity를 설치하지 않습니다.
 - Linux 실행은 아직 검증하지 않았습니다. POSIX 파일 잠금과 프로세스 그룹을 사용하므로 Windows 네이티브 실행은 지원하지 않습니다.
 
-## 설치
+## 에이전트에게 설치 맡기기
+
+사용 중인 코딩 에이전트에게 다음 문장을 전달하세요.
+
+> https://github.com/genielabs-io/duorbi/blob/main/INSTALL.md 를 읽고 현재 프로젝트에 Duorbi와 프로젝트 범위의 Codex 연동을 설치해 줘. 기존 설정을 보존하고 실제로 수행한 검증 결과를 알려 줘.
+
+[INSTALL.md](INSTALL.md)에 사전 점검, 기존 설치 처리, 설정 병합, 모델 호출 없는 검증 절차가 있습니다.
+
+## 직접 설치
 
 저장소를 복제하고 폴더에서 실행합니다.
 
