@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0 — 2026-10-16
+
+First tagged GitHub release of Duorbi.
+
+- Local Codex-to-Antigravity A2A collaboration with durable project conversation IDs.
+- Explicit new, continue and selected-context calls, with strict resume validation.
+- Portable user-state paths and published, locked runtime dependencies.
+- Selected Duorbi icon, English/Korean README diagrams and optional Codex setup examples.
+- Fake-CLI regression tests, clean-wheel verification and macOS Python 3.13/3.14 CI.
+- A second review of public history, metadata, source and release archives for private data and machine-specific paths; see [release review](docs/release-review-0.1.0.md).
+
 ## 0.1.0a1 — local public-source candidate
 
 - Package the Antigravity A2A adapter as the `duorbi` command.

@@ -31,7 +31,7 @@ Duorbi uses Antigravity's documented headless CLI. It does not connect to existi
 
 ## Status and requirements
 
-- **0.1.0a1, macOS preview.** The original adapter was exercised with Antigravity CLI `agy 1.4.0`. The extracted package is checked with fake CLI integration tests and a clean wheel installation; see [verification](docs/verification.md).
+- **0.1.0, macOS preview.** The original adapter was exercised with Antigravity CLI `agy 1.4.0`. The extracted package is checked with fake CLI integration tests and a clean wheel installation; see [verification](docs/verification.md).
 - Python **3.13+**, [uv](https://docs.astral.sh/uv/), and an installed `agy` executable on `PATH`.
 - Authenticate using an interactive `agy` session in your project before making headless calls. Duorbi does not collect credentials or install Antigravity.
 - Linux runtime compatibility has not been verified. Native Windows is unsupported; the adapter uses POSIX file locks and process groups.
