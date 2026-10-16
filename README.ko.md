@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/duorbi-icon.png" alt="Duorbi — 연결된 두 에이전트" width="160">
+</p>
+
 # Duorbi · 듀오비
 
 **두 에이전트, 계속 이어지는 대화.**
@@ -6,10 +10,21 @@ Codex가 주도하고 Antigravity가 설계 논의와 코드 검토에 참여하
 
 [English](README.md) · [Codex 설정](docs/codex-integration.md) · [구조와 복원 원리](docs/architecture.md)
 
-```text
-Codex → Duorbi → 로컬 A2A 서버(a2acode) → Antigravity CLI(agy)
-                       ↕
-                프로젝트별 대화 ID(SQLite)
+```mermaid
+flowchart LR
+    C["Codex"] <--> D["Duorbi CLI"]
+    D <-->|"A2A / loopback HTTP"| S["a2acode<br/>A2A 서버"]
+    S <-->|"Headless JSON"| A["Antigravity<br/>agy · plan 모드"]
+    S <--> DB[("SQLite<br/>프로젝트별 대화 ID")]
+
+    classDef codex fill:#f1edff,stroke:#7863d4,color:#302454
+    classDef bridge fill:#eef4ff,stroke:#3c66e2,color:#173062
+    classDef agent fill:#edf8ff,stroke:#3186ff,color:#16365b
+    classDef storage fill:#f5f5f7,stroke:#969eab,color:#323849
+    class C codex
+    class D,S bridge
+    class A agent
+    class DB storage
 ```
 
 Antigravity가 문서로 제공하는 headless CLI를 사용합니다. 기존 데스크톱 채팅창 사이에 메시지를 보내는 기능은 없습니다. OpenAI·Google의 공식 제품이 아닌 독립 프로젝트입니다.

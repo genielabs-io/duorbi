@@ -13,7 +13,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 PRIVATE_PARTS = {'state', 'runtime', 'logs', 'backups', 'upstream', '.venv',
                  '__pycache__', '.git', '.aws'}
-SOURCE_DIRS = ('src', 'tests', 'scripts', 'docs', 'examples', '.github')
+SOURCE_DIRS = ('src', 'tests', 'scripts', 'docs', 'examples', 'assets', '.github')
 SOURCE_FILES = ('README.md', 'README.ko.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                 'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md',
                 'pyproject.toml', 'uv.lock', '.gitignore')

@@ -42,6 +42,7 @@ include = [
   "/src/duorbi/*.py",
   "/tests/*.py",
   "/examples/**",
+  "/assets/**",
   "/docs/**",
   "/scripts/*.py",
   "/README.md",

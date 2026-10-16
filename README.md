@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/duorbi-icon.png" alt="Duorbi — two connected agents" width="160">
+</p>
+
 # Duorbi
 
 **Two agents. One continuing conversation.**
@@ -8,10 +12,19 @@ A local A2A bridge for Codex and Antigravity. Let Codex lead a design discussion
 
 ```mermaid
 flowchart LR
-    C[Codex] --> D[Duorbi CLI]
-    D <-->|Loopback HTTP / A2A| S[a2acode server]
-    S --> A[Antigravity agy / plan mode]
-    S <--> DB[(Project conversation IDs / SQLite)]
+    C["Codex"] <--> D["Duorbi CLI"]
+    D <-->|"A2A / loopback HTTP"| S["a2acode<br/>A2A server"]
+    S <-->|"Headless JSON"| A["Antigravity<br/>agy · plan mode"]
+    S <--> DB[("SQLite<br/>Project conversation IDs")]
+
+    classDef codex fill:#f1edff,stroke:#7863d4,color:#302454
+    classDef bridge fill:#eef4ff,stroke:#3c66e2,color:#173062
+    classDef agent fill:#edf8ff,stroke:#3186ff,color:#16365b
+    classDef storage fill:#f5f5f7,stroke:#969eab,color:#323849
+    class C codex
+    class D,S bridge
+    class A agent
+    class DB storage
 ```
 
 Duorbi uses Antigravity's documented headless CLI. It does not connect to existing Codex or Antigravity desktop chat windows. This is an independent community project.
