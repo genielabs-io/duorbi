@@ -257,7 +257,7 @@ class PersistentTransportTests(unittest.TestCase):
             pids = self.wait_for_cli()
             with self.rest(f'/tasks/{task_id}:cancel', {}) as response:
                 canceled = json.load(response)
-            self.assertEqual(canceled['status']['state'], 'TASK_STATE_CANCELED')
+            self.assertEqual(canceled['status']['state'], 'TASK_STATE_CANCELED', canceled)
             self.assert_processes_stopped(pids)
             self.assertFalse((self.project / '.fake-agy.json').exists())
             code, listed = self.run_cli('sessions')
