@@ -117,10 +117,11 @@ PowerShell:
 
 ```powershell
 $CHECK_STATE = Join-Path ([System.IO.Path]::GetTempPath()) ("duorbi-install-" + [guid]::NewGuid().ToString("N"))
-New-Item -ItemType Directory -Path "$CHECK_STATE" | Out-Null
 duorbi info --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
 duorbi sessions --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
 ```
+
+Leave the Windows check directory absent so `duorbi info` creates it using Python's mode-0700 directory ACL handling.
 
 Expect exit 0, the correct canonical project and state paths, a loopback URL, and an empty `sessions` list. `info` and `sessions` create local SQLite metadata; they do not contact a model.
 
