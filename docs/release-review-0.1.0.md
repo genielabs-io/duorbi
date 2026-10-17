@@ -1,6 +1,6 @@
 # 0.1.0 privacy and portability review
 
-Review date: 2026-10-16. This is a targeted review of public source and release contents, not a general security certification.
+Historical review date: 2026-10-16. This records the withdrawn release; current SDK-based dependencies and licensing are described in [the current license review](license-review.md). This is a targeted review of public source and release contents, not a general security certification.
 
 ## Result
 

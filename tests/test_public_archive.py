@@ -11,8 +11,8 @@ import zipfile
 class PublicArchiveTests(unittest.TestCase):
     def write_duorbi_archive(self, directory, kind, omitted=None):
         files = {'LICENSE': b'Duorbi MIT license fixture',
-                 'THIRD_PARTY_NOTICES.md': b'a2acode attribution fixture',
-                 'licenses/a2acode-LICENSE.txt': b'Apache-2.0 license fixture'}
+                 'THIRD_PARTY_NOTICES.md': b'Official A2A SDK attribution fixture',
+                 'licenses/a2a-sdk-LICENSE.txt': b'Apache-2.0 license fixture'}
         files.pop(omitted, None)
         if kind == 'wheel':
             path = Path(directory) / 'duorbi-9.9.9-py3-none-any.whl'
@@ -71,7 +71,7 @@ class PublicArchiveTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             for kind in ('wheel', 'sdist'):
                 for omitted in ('LICENSE', 'THIRD_PARTY_NOTICES.md',
-                                'licenses/a2acode-LICENSE.txt'):
+                                'licenses/a2a-sdk-LICENSE.txt'):
                     with self.subTest(kind=kind, omitted=omitted):
                         path = self.write_duorbi_archive(tmp, kind, omitted)
                         issues = audit.check_archive(path)

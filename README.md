@@ -6,7 +6,7 @@
 
 **Two agents. One continuing conversation.**
 
-A local A2A bridge for Codex and Antigravity, built on [a2acode](https://github.com/kanywst/a2acode). Let Codex lead a design discussion or code review, ask the installed Antigravity CLI for another perspective, and resume that same conversation after restarting the bridge.
+A local A2A bridge for Codex and Antigravity, built with the [official A2A Python SDK](https://github.com/a2aproject/a2a-python). Let Codex lead a design discussion or code review, ask the installed Antigravity CLI for another perspective, and resume that same conversation after restarting the bridge.
 
 **Install with your coding agent**
 
@@ -24,7 +24,7 @@ Your agent can follow [INSTALL.md](INSTALL.md) to check prerequisites, preserve 
 ```mermaid
 flowchart LR
     C["Codex"] <--> D["Duorbi CLI"]
-    D <-->|"A2A / loopback HTTP"| S["a2acode<br/>A2A server"]
+    D <-->|"A2A / loopback HTTP"| S["Duorbi server<br/>Official A2A SDK"]
     S <-->|"Headless JSON"| A["Antigravity<br/>agy · plan mode"]
     S <--> DB[("SQLite<br/>Project conversation IDs")]
 
@@ -78,9 +78,9 @@ duorbi status --project /absolute/path/to/project
 duorbi call 'Review this design. Do not edit files.' --new --project /absolute/path/to/project
 ```
 
-Output is newline-delimited JSON. The final `type: result` object includes `state`, `response`, `context_id` and `agent_session_id` when successful. Only **exit 0 and state `completed`** indicate success. Exit 2 indicates failure/incomplete work; exit 3 represents upstream input-required state, which this adapter cannot resolve through an approval relay. Invalid command syntax uses argparse's exit 2.
+Output is newline-delimited JSON. The final `type: result` object includes `state`, `response`, `context_id` and `agent_session_id` when successful. Only **exit 0 and state `completed`** indicate success. Exit 2 indicates failure/incomplete work. Exit 3 is reserved for an input-required response; this text-only adapter does not relay approvals and reports unsupported CLI states as failures. Invalid command syntax uses argparse's exit 2.
 
-The examples above use POSIX paths; in PowerShell, replace them with a quoted absolute Windows project path. Use the same project and state settings in both terminals. Read long prompts from stdin to avoid shell interpolation:
+The examples above use POSIX paths; in PowerShell, replace them with a quoted absolute Windows project path. Use the same project and state settings in both terminals. Read prompts from stdin to avoid shell interpolation. Duorbi still passes text to `agy -p`, so the operating system's command-line size limit applies:
 
 ```sh
 duorbi call - --new --project /absolute/path/to/project < review-request.txt
@@ -152,4 +152,4 @@ Tests use temporary directories, SQLite and a fake CLI executable, including rea
 
 ## License and dependencies
 
-Duorbi code and documentation: [MIT](LICENSE). The A2A server is the separately installed **[a2acode](https://github.com/kanywst/a2acode) 0.8.0**, licensed under Apache-2.0. Duorbi adds the Antigravity adapter, CLI and project conversation storage; the A2A server comes from a2acode. Upstream source is not vendored or modified. Both the wheel and source archive include [third-party notices](THIRD_PARTY_NOTICES.md) and the [upstream license text](licenses/a2acode-LICENSE.txt). See the [distribution review](docs/license-review.md) for scope and redistribution requirements.
+Duorbi's original server adapter, CLI, storage and documentation use [MIT](LICENSE). Protocol handling comes from the separately installed **[official A2A Python SDK](https://github.com/a2aproject/a2a-python) (`a2a-sdk` 1.2.2)** under Apache-2.0. Duorbi assembles the SDK server and connects it to Antigravity; it does not vendor SDK source. Both wheel and source archive include [third-party notices](THIRD_PARTY_NOTICES.md) and the [SDK license text](licenses/a2a-sdk-LICENSE.txt). Other dependencies retain their own terms. See the [distribution review](docs/license-review.md).

@@ -184,6 +184,204 @@ class PersistentTransportTests(unittest.TestCase):
         self.assertEqual(code, 0, listed)
         self.assertEqual(listed['sessions'][0]['conversation_id'], first['agent_session_id'])
 
+    def test_advertised_jsonrpc_route_executes_text_with_only_declared_capabilities(self):
+        from duorbi.agy_request import encode_request
+        self.start()
+        with self.rest('/.well-known/agent-card.json') as response:
+            card = json.load(response)
+        self.assertEqual(card['capabilities'], {'streaming': True})
+        self.assertEqual(card['defaultInputModes'], ['text/plain'])
+        self.assertEqual(card['defaultOutputModes'], ['text/plain'])
+        self.assertEqual([skill['id'] for skill in card['skills']], ['text-review'])
+        self.assertEqual({interface['protocolBinding'] for interface in card['supportedInterfaces']},
+                         {'HTTP+JSON', 'JSONRPC'})
+        with self.rest('/', {'jsonrpc': '2.0', 'id': 'fixture', 'method': 'SendMessage',
+                             'params': {'message': {'messageId': 'fixture', 'role': 'ROLE_USER',
+                                                    'parts': [{'text': encode_request('exact')}]} }}) as response:
+            result = json.load(response)
+        task = result['result']['task']
+        self.assertEqual(task['status']['state'], 'TASK_STATE_COMPLETED')
+        self.assertEqual(task['status']['message']['parts'][0]['text'], 'exact')
+        self.assertIn('agent_session_id', task['status']['message']['metadata'])
+
+    def rest(self, path, payload=None):
+        data = json.dumps(payload).encode() if payload is not None else None
+        request = urllib.request.Request(f'http://127.0.0.1:{self.port}' + path,
+                                         data=data, headers={'Content-Type': 'application/json', 'A2A-Version': '1.0'})
+        return urllib.request.urlopen(request, timeout=10)
+
+    def stream(self, context='ctx', parts=None):
+        from duorbi.agy_request import encode_request
+        return self.rest('/message:stream', {'message': {
+            'messageId': 'fixture-message', 'role': 'ROLE_USER', 'contextId': context,
+            'parts': parts or [{'text': encode_request('hello')}]}})
+
+    def next_event(self, stream):
+        while True:
+            line = stream.readline().decode()
+            if not line:
+                self.fail('SSE stream ended without expected event')
+            if line.startswith('data: '):
+                return json.loads(line[6:])
+
+    def wait_for_cli(self):
+        marker = self.project / '.fake-pids.json'
+        for _ in range(200):
+            if marker.exists():
+                return json.loads(marker.read_text())
+            time.sleep(.02)
+        self.fail('fake CLI did not start')
+
+    def assert_processes_stopped(self, pids):
+        def alive(pid):
+            if os.name == 'nt':
+                from duorbi.win32_jobs import process_is_running
+                return process_is_running(pid)
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return False
+            return True
+        for _ in range(200):
+            if not any(alive(pid) for pid in pids.values() if pid):
+                return
+            time.sleep(.02)
+        self.fail(f'fake CLI process survived: {pids}')
+
+    def test_http_cancel_waits_for_owned_tree_and_releases_context_lock(self):
+        (self.project / '.fake-control.json').write_text(json.dumps({'wait': True, 'child': True}))
+        self.start()
+        with self.stream() as stream:
+            first = self.next_event(stream)
+            task_id = first['task']['id']
+            pids = self.wait_for_cli()
+            with self.rest(f'/tasks/{task_id}:cancel', {}) as response:
+                canceled = json.load(response)
+            self.assertEqual(canceled['status']['state'], 'TASK_STATE_CANCELED')
+            self.assert_processes_stopped(pids)
+            self.assertFalse((self.project / '.fake-agy.json').exists())
+            code, listed = self.run_cli('sessions')
+            self.assertEqual(listed['sessions'], [])
+            from duorbi.session_store import SessionStore
+            with SessionStore(self.state).claim(self.project, 'ctx'):
+                pass
+            with self.rest(f'/tasks/{task_id}') as response:
+                self.assertEqual(json.load(response)['status']['state'], 'TASK_STATE_CANCELED')
+        (self.project / '.fake-control.json').unlink()
+        code, resumed = self.run_cli('call', 'after canceled')
+        self.assertEqual(code, 0, resumed)
+
+    @unittest.skipIf(os.name == 'nt', 'Windows terminate is owner death; ASGI lifespan is covered separately')
+    def test_sigterm_with_open_stream_bounds_drain_and_cleans_running_tree(self):
+        (self.project / '.fake-control.json').write_text(json.dumps({'wait': True, 'child': True}))
+        self.start()
+        with self.stream() as stream:
+            self.next_event(stream)
+            pids = self.wait_for_cli()
+            started = time.monotonic()
+            self.stop()
+            self.assertLess(time.monotonic() - started, 8)
+            self.assert_processes_stopped(pids)
+        from duorbi.session_store import SessionStore
+        store = SessionStore(self.state)
+        self.assertEqual(store.list(self.project), [])
+        with store.claim(self.project, 'ctx'):
+            pass
+
+    def test_http_concurrent_turn_in_same_context_fails_before_another_cli_launch(self):
+        (self.project / '.fake-control.json').write_text(json.dumps({'wait': True, 'child': True}))
+        self.start()
+        with self.stream(context='shared-context') as first_stream:
+            first_id = self.next_event(first_stream)['task']['id']
+            pids = self.wait_for_cli()
+            with self.stream(context='shared-context') as second_stream:
+                second_id = self.next_event(second_stream)['task']['id']
+                self.assertNotEqual(first_id, second_id)
+                while True:
+                    event = self.next_event(second_stream)
+                    if 'statusUpdate' in event:
+                        state = event['statusUpdate']['status']['state']
+                        if state in {'TASK_STATE_COMPLETED', 'TASK_STATE_FAILED'}:
+                            self.assertEqual(state, 'TASK_STATE_FAILED')
+                            break
+            self.assertEqual((self.project / '.fake-invocations').read_text().splitlines(),
+                             [str(pids['owner'])])
+            code, listed = self.run_cli('sessions')
+            self.assertEqual(listed['sessions'], [])
+            (self.project / '.fake-release').touch()
+            while True:
+                event = self.next_event(first_stream)
+                if 'statusUpdate' in event and event['statusUpdate']['status']['state'] == 'TASK_STATE_COMPLETED':
+                    break
+        self.assert_processes_stopped(pids)
+        from duorbi.session_store import SessionStore
+        store = SessionStore(self.state)
+        self.assertEqual(len(store.list(self.project)), 1)
+        with store.claim(self.project, 'shared-context'):
+            pass
+
+    def test_stream_disconnect_continues_and_saves_after_cleanup(self):
+        answer = '  exact 한글 🙂\nfinal\n'
+        (self.project / '.fake-control.json').write_text(json.dumps({'wait': True, 'child': True, 'response': answer}))
+        self.start()
+        with self.stream() as stream:
+            task_id = self.next_event(stream)['task']['id']
+            pids = self.wait_for_cli()
+        # Closing the response detaches the subscriber; the SDK producer persists.
+        (self.project / '.fake-release').touch()
+        for _ in range(200):
+            with self.rest(f'/tasks/{task_id}') as response:
+                task = json.load(response)
+            if task['status']['state'] == 'TASK_STATE_COMPLETED':
+                break
+            time.sleep(.02)
+        else:
+            self.fail(task)
+        self.assertEqual(task['status']['message']['parts'][0]['text'], answer)
+        self.assertEqual(task['status']['message']['metadata']['agent_session_id'],
+                         json.loads((self.project / '.fake-agy.json').read_text()).popitem()[0])
+        self.assert_processes_stopped(pids)
+        code, listed = self.run_cli('sessions')
+        self.assertEqual(len(listed['sessions']), 1)
+
+    def test_server_shutdown_cleans_disconnected_running_cli_tree(self):
+        (self.project / '.fake-control.json').write_text(json.dumps({'wait': True, 'child': True}))
+        self.start()
+        with self.stream() as stream:
+            self.next_event(stream)
+            pids = self.wait_for_cli()
+        self.stop()
+        self.assert_processes_stopped(pids)
+        from duorbi.session_store import SessionStore
+        store = SessionStore(self.state)
+        self.assertEqual(store.list(self.project), [])
+        with store.claim(self.project, 'ctx'):
+            pass
+
+    def test_mixed_parts_fail_over_http_without_launching_cli(self):
+        from duorbi.agy_request import encode_request
+        self.start()
+        with self.stream(parts=[{'text': encode_request('hello')},
+                                {'raw': 'YXR0YWNobWVudA==', 'mediaType': 'application/octet-stream'}]) as stream:
+            while True:
+                event = self.next_event(stream)
+                if 'statusUpdate' in event and event['statusUpdate']['status']['state'] == 'TASK_STATE_FAILED':
+                    break
+        self.assertFalse((self.project / '.fake-agy.json').exists())
+        code, listed = self.run_cli('sessions')
+        self.assertEqual(listed['sessions'], [])
+
+    def test_cli_failure_returns_failed_without_saved_mapping_or_artifact(self):
+        (self.project / '.fake-control.json').write_text(json.dumps({'status': 'WAITING'}))
+        self.start()
+        code, failed = self.run_cli('call', 'hello')
+        self.assertEqual(code, 2, failed)
+        self.assertEqual(failed['state'], 'failed')
+        self.assertEqual(failed['response'], '')
+        self.assertNotIn('agent_session_id', failed)
+        code, listed = self.run_cli('sessions')
+        self.assertEqual(listed['sessions'], [])
+
 
 if __name__ == '__main__':
     unittest.main()

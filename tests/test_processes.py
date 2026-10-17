@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock, Mock, patch
 class ProcessTests(unittest.IsolatedAsyncioTestCase):
     async def test_cancellation_while_spawn_returns_reaps_child(self):
         from duorbi.agy_backend import AgyBackend
-        from a2acode.backends.base import RunRequest
         created = asyncio.Event()
         release = asyncio.Event()
         real_create = asyncio.create_subprocess_exec
@@ -26,10 +25,7 @@ class ProcessTests(unittest.IsolatedAsyncioTestCase):
             return proc
 
         backend = AgyBackend('.', command=[sys.executable, '-c', 'import time; time.sleep(60)'])
-        class Sink:
-            async def emit(self, event):
-                raise AssertionError('cancelled turn published output')
-        task = asyncio.create_task(backend.drive(Sink(), RunRequest('hello', context_id='ctx')))
+        task = asyncio.create_task(backend.run('hello', context_id='ctx'))
         try:
             with patch('asyncio.create_subprocess_exec', side_effect=delayed_create):
                 await created.wait()
@@ -278,7 +274,6 @@ class WindowsProcessTests(unittest.IsolatedAsyncioTestCase):
             await stop_process(proc)
 
     async def test_success_kills_descendant_before_publishing_result(self):
-        from a2acode.backends.base import Result, RunRequest
         from duorbi.agy_backend import AgyBackend
         from duorbi.win32_jobs import process_is_running
         with tempfile.TemporaryDirectory() as tmp:
@@ -288,35 +283,25 @@ class WindowsProcessTests(unittest.IsolatedAsyncioTestCase):
                     'stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL); '
                     'pathlib.Path(sys.argv[1]).write_text(str(p.pid)); '
                     'print(json.dumps({"status":"SUCCESS","conversation_id":"s1","response":"ok"}))')
-            events = []
-            test = self
-            class Sink:
-                async def emit(self, event):
-                    test.assertFalse(process_is_running(int(marker.read_text())))
-                    events.append(event)
-            await AgyBackend(tmp, command=[sys.executable, '-c', code, str(marker)]).drive(
-                Sink(), RunRequest('hello', context_id='ctx'))
-            self.assertTrue(any(isinstance(event, Result) for event in events))
+            result = await AgyBackend(tmp, command=[sys.executable, '-c', code, str(marker)]).run(
+                'hello', context_id='ctx')
+            self.assertFalse(process_is_running(int(marker.read_text())))
+            self.assertEqual(result['conversation_id'], 's1')
 
     async def test_job_cleanup_failure_closes_handle_and_publishes_no_result(self):
-        from a2acode.backends.base import RunRequest
         from duorbi.agy_backend import AgyBackend
         from duorbi.win32_jobs import Job
-        jobs, events = [], []
+        jobs = []
         def failing_job():
             job = Job()
             jobs.append(job)
             job.terminate = lambda: (_ for _ in ()).throw(OSError('termination failed'))
             return job
-        class Sink:
-            async def emit(self, event):
-                events.append(event)
         code = 'import json;print(json.dumps({"status":"SUCCESS","conversation_id":"s1","response":"ok"}))'
         backend = AgyBackend('.', command=[sys.executable, '-c', code])
         with patch('duorbi.win32_jobs.Job', side_effect=failing_job):
             with self.assertRaisesRegex(OSError, 'termination failed'):
-                await backend.drive(Sink(), RunRequest('hello', context_id='ctx'))
-        self.assertFalse(events)
+                await backend.run('hello', context_id='ctx')
         self.assertTrue(jobs[0].closed)
         self.assertFalse(backend.active)
 

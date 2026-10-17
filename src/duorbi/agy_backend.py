@@ -1,4 +1,4 @@
-"""Antigravity headless JSON adapter for a2acode's A2A server.
+"""Antigravity headless JSON process runner for Duorbi.
 
 The CLI conversation ID is resumed explicitly; this is not an ACP backend.
 Tool approval round trips are not supported by this adapter.
@@ -8,10 +8,6 @@ import json
 import os
 import signal
 import shutil
-from dataclasses import replace
-
-from a2acode.backends.base import Result, TextDelta
-
 from .processes import (OwnedWindowsProcess, finish_cleanup, spawn_owned_process,
                         stop_windows_process)
 
@@ -123,41 +119,40 @@ class AgyBackend:
         self.active = set()
         self.store = store
 
-    async def drive(self, session, request):
+    async def run(self, prompt, *, context_id, resume=None):
+        """Return verified JSON only after owned-process cleanup and durable save."""
         if self.store is None:
-            return await self._drive(session, request)
+            return await self._run(prompt, context_id=context_id, resume=resume)
         from .agy_request import decode_request
-        if not request.context_id:
+        if not context_id:
             raise ValueError('A2A context ID is required')
-        text, expected = decode_request(request.prompt)
-        with self.store.claim(self.cwd, request.context_id):
-            saved = self.store.get(self.cwd, request.context_id)
+        text, expected = decode_request(prompt)
+        with self.store.claim(self.cwd, context_id):
+            saved = self.store.get(self.cwd, context_id)
             if expected is not None:
                 if saved is None or saved['conversation_id'] != expected:
                     raise ValueError('Saved conversation missing or changed; refusing to start a new one')
-                if request.resume and request.resume != expected:
+                if resume and resume != expected:
                     raise ValueError('In-memory and saved conversation IDs disagree')
-            elif saved is not None or request.resume:
+            elif saved is not None or resume:
                 raise ValueError('New conversation requested with an existing context')
-            await self._drive(session, replace(request, prompt=text, resume=expected))
+            return await self._run(text, context_id=context_id, resume=expected)
 
-    async def _drive(self, session, request):
-        context = request.context_id
+    async def _run(self, prompt, *, context_id, resume=None):
+        context = context_id
         if context in self.active:
             raise RuntimeError('A turn in this context is already running')
-        if request.attachments:
-            raise ValueError('Antigravity adapter accepts text only; include relevant excerpts')
         self.active.add(context)
         proc = None
         try:
-            command = [*self.command, '-p', request.prompt, '--output-format', 'json',
+            command = [*self.command, '-p', prompt, '--output-format', 'json',
                        '--mode', 'plan', '--print-timeout', f'{self.timeout}s']
-            if request.resume:
-                command.extend(['--conversation', request.resume])
+            if resume:
+                command.extend(['--conversation', resume])
             proc = await spawn_owned_process(command, cwd=self.cwd)
             async with asyncio.timeout(self.timeout + self.exit_grace):
                 stdout, stderr = await proc.communicate()
-            value = parse_result(stdout, proc.returncode, request.resume, stderr)
+            value = parse_result(stdout, proc.returncode, resume, stderr)
         finally:
             try:
                 if proc is not None:
@@ -168,7 +163,4 @@ class AgyBackend:
         # update the executor's conversation mapping for a failed cleanup.
         if self.store is not None:
             self.store.save(self.cwd, context, value['conversation_id'])
-        await session.emit(TextDelta(value['response']))
-        await session.emit(Result(session_id=value['conversation_id'],
-                                  num_turns=value.get('num_turns'),
-                                  usage=value.get('usage'), stop_reason='completed'))
+        return value

@@ -8,16 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from a2acode.backends.base import Result, RunRequest, TextDelta
 from duorbi.agy_backend import AgyBackend, parse_result, stop_process
-
-
-class Collector:
-    def __init__(self):
-        self.events = []
-
-    async def emit(self, event):
-        self.events.append(event)
 
 
 class AgyTests(unittest.IsolatedAsyncioTestCase):
@@ -45,24 +36,22 @@ print(json.dumps({'status':'SUCCESS','conversation_id':'session1',
                   'response':a[a.index('-p')+1]}))
 ''')
             backend = AgyBackend(tmp, command=[sys.executable, str(script)])
-            sink = Collector()
             prompt = 'literal $(touch SHOULD_NOT_EXIST) `pwd`'
-            await backend.drive(sink, RunRequest(prompt, context_id='ctx', resume='session1'))
-            self.assertEqual([e.text for e in sink.events if isinstance(e, TextDelta)], [prompt])
-            self.assertEqual([e.session_id for e in sink.events if isinstance(e, Result)], ['session1'])
+            value = await backend.run(prompt, context_id='ctx', resume='session1')
+            self.assertEqual(value['response'], prompt)
+            self.assertEqual(value['conversation_id'], 'session1')
             self.assertFalse((Path(tmp) / 'SHOULD_NOT_EXIST').exists())
 
     async def test_timeout_terminates_child(self):
         with tempfile.TemporaryDirectory() as tmp:
             backend = AgyBackend(tmp, command=[sys.executable, '-c', 'import time; time.sleep(60)'], timeout=.1, exit_grace=.05)
             with self.assertRaises(TimeoutError):
-                await backend.drive(Collector(), RunRequest('test', context_id='ctx'))
+                await backend.run('test', context_id='ctx')
             self.assertFalse(backend.active)
 
     async def test_cleanup_failure_releases_context_and_does_not_publish_success(self):
         code = 'import json; print(json.dumps({"status":"SUCCESS","conversation_id":"session1","response":"ok"}))'
         backend = AgyBackend('.', command=[sys.executable, '-c', code])
-        sink = Collector()
 
         async def failing_cleanup(proc):
             await stop_process(proc)
@@ -70,18 +59,17 @@ print(json.dumps({'status':'SUCCESS','conversation_id':'session1',
 
         with patch('duorbi.agy_backend.stop_process', side_effect=failing_cleanup):
             with self.assertRaisesRegex(PermissionError, 'simulated cleanup'):
-                await backend.drive(sink, RunRequest('hello', context_id='ctx'))
+                await backend.run('hello', context_id='ctx')
         self.assertFalse(backend.active)
-        self.assertFalse(any(isinstance(e, Result) for e in sink.events))
-        await backend.drive(sink, RunRequest('again', context_id='ctx'))
-        self.assertEqual([e.text for e in sink.events if isinstance(e, TextDelta)], ['ok'])
+        value = await backend.run('again', context_id='ctx')
+        self.assertEqual(value['response'], 'ok')
 
     async def test_cli_gets_time_to_flush_its_own_timeout_result(self):
         code = ('import json,time; time.sleep(.2); '
                 'print(json.dumps({"status":"ERROR","error":"deadline exceeded"}))')
         backend = AgyBackend('.', command=[sys.executable, '-c', code], timeout=.1, exit_grace=1)
         with self.assertRaisesRegex(RuntimeError, 'deadline exceeded'):
-            await backend.drive(Collector(), RunRequest('hello', context_id='ctx'))
+            await backend.run('hello', context_id='ctx')
         self.assertFalse(backend.active)
 
     async def test_failed_cli_reports_category_without_exposing_raw_secrets(self):
@@ -90,7 +78,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':'session1',
                 'sys.exit(1)')
         backend = AgyBackend('.', command=[sys.executable, '-c', code])
         with self.assertRaises(RuntimeError) as caught:
-            await backend.drive(Collector(), RunRequest('hello', context_id='ctx'))
+            await backend.run('hello', context_id='ctx')
         detail = str(caught.exception)
         self.assertIn('authentication required', detail)
         self.assertNotIn('PRIVATE_TOKEN', detail)
@@ -109,7 +97,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':'session1',
         backend = AgyBackend('.', command=[sys.executable])
         backend.active.add('ctx')
         with self.assertRaisesRegex(RuntimeError, 'already running'):
-            await backend.drive(Collector(), RunRequest('test', context_id='ctx'))
+            await backend.run('test', context_id='ctx')
 
     @unittest.skipIf(os.name == 'nt', 'POSIX process group and signal semantics')
     async def test_cleanup_removes_descendant_after_leader_exits(self):
@@ -199,7 +187,7 @@ while True: time.sleep(.05)
             code = ('import os,time,pathlib; '
                     f'pathlib.Path({str(ready)!r}).write_text(str(os.getpid())); time.sleep(60)')
             backend = AgyBackend(tmp, command=[sys.executable, '-c', code])
-            task = asyncio.create_task(backend.drive(Collector(), RunRequest('hello', context_id='ctx')))
+            task = asyncio.create_task(backend.run('hello', context_id='ctx'))
             try:
                 for _ in range(200):
                     if ready.exists():

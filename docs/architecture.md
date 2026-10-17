@@ -9,7 +9,7 @@
 5. `agy -p TEXT --output-format json --mode plan --print-timeout 180s` runs in the target project. A resumed call adds the exact stored `--conversation ID`; the bridge never uses agy's global `--continue` flag.
 6. The backend accepts only normal process exit, `SUCCESS`, response text and the expected conversation ID. It finishes process cleanup and commits the mapping before publishing success.
 
-The transport layer is the separately installed a2acode 0.8.0. Duorbi neither modifies its source nor implements its own copy of A2A. The Antigravity adapter is headless JSON, not ACP.
+Duorbi implements a small text-only executor and assembles the server using the official `a2a-sdk` 1.2.2 request handler, routes and task events. The SDK implements the A2A protocol; Duorbi owns the Antigravity connection and application lifecycle. The adapter uses headless JSON, not ACP. The card advertises text review and streaming, without push notifications or tool-approval relay.
 
 ## Three identifiers
 
@@ -41,11 +41,11 @@ POSIX uses `flock`; Windows uses a byte-range file lock. Locks are held for the 
 
 ## What survives a restart
 
-Completed mappings survive. A fresh backend reads SQLite even when the upstream executor's in-memory session mapping is empty. Antigravity must still have its own matching history and the account must remain usable. The project must retain its canonical path; symlinks to that path identify the same project.
+Completed mappings survive. A fresh backend reads SQLite; recovery does not depend on an in-memory SDK task or session mapping. Antigravity must still have its own matching history and the account must remain usable. The project must retain its canonical path; symlinks to that path identify the same project.
 
 Interrupted tasks, approval prompts and exactly-once model effects are outside this feature. A crash after Antigravity responds but before the DB commit can leave an unrecorded new conversation. A resumed turn can have affected Antigravity history even if a later cleanup/save fails. Do not blindly repeat a timed-out request.
 
-The agy execution budget is 180 seconds, with a 10-second process-exit allowance. The client defaults to 210 seconds. Client timeout alone does not cancel server work. On POSIX, cleanup targets the invocation's process group: TERM with up to 5 seconds to finish, then KILL if required. On Windows, a parent-owned, non-inherited Job Object contains the runner and its descendants. The Python runner waits for a launch token until assignment to the job, so agy cannot start outside containment. Cleanup terminates the job tree, including descendants left after the direct child exits; kill-on-close also applies if the owning parent exits. Windows requires a native `agy.exe` and rejects `.bat`/`.cmd` wrappers. All platforms pass literal argument lists without a shell and decode JSON pipes as UTF-8. Stop only server processes you own.
+The agy execution budget is 180 seconds, with a 10-second process-exit allowance. The client defaults to 210 seconds. Client timeout or streaming disconnect alone does not cancel server work. An explicit A2A cancellation waits for owned work to finish cleanup before reporting cancellation. Graceful server shutdown cancels and awaits active executions; it does not restore interrupted tasks on restart. On POSIX, cleanup targets the invocation's process group: TERM with up to 5 seconds to finish, then KILL if required. On Windows, a parent-owned, non-inherited Job Object contains the runner and its descendants. The Python runner waits for a launch token until assignment to the job, so agy cannot start outside containment. Cleanup terminates the job tree, including descendants left after the direct child exits; kill-on-close also applies if the owning parent exits. Windows requires a native `agy.exe` and rejects `.bat`/`.cmd` wrappers. All platforms pass literal argument lists without a shell and decode JSON pipes as UTF-8. Stop only server processes you own.
 
 On Windows, the trusted launch gate runs with the base CPython executable and an absolute path to Duorbi's stdlib-only runner, in isolated (`-I`) mode. A virtual environment's `python.exe` can be a redirector that starts another interpreter before the parent can assign its PID to a Job. Using the base executable ensures the assigned PID is the process that waits for the launch token; the target command remains unchanged and can still use its own virtual environment.
 
@@ -71,3 +71,7 @@ duorbi import-session --project /absolute/path/to/project \
 This registers identifiers; it does not verify that Antigravity can still open them. The next resume performs that check. Do not guess IDs or import another project's conversation.
 
 An existing store created by the original adapter can be used with `--state-dir /absolute/path/to/existing/state` on **all** commands, with the original project path. The schema and Antigravity project hash remain compatible. Stop old servers first; replace them with Duorbi servers when switching. The default public-package location is separate and does not automatically search for or copy older stores. Back up a stopped store's entire directory before a manual migration; moving a store changes its card identity and requires matching new settings on server/client.
+
+## Upgrading from the former server integration
+
+The official-SDK server replaces the former a2acode dependency. Stop the old server and upgrade the CLI, retaining the same canonical project and state directory. No database conversion or new conversation ID is required: schema version 1, the store UUID, project-derived card identity/port and the request envelope are unchanged. SDK task history is in memory and is not restored. New server metadata uses `agent_session_id`; the CLI also recognizes the legacy `claude_session_id` field when reading an older server response. The supported compatibility boundary is the Duorbi CLI and its saved mappings, not every optional feature of the former generic server.

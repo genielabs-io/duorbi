@@ -39,11 +39,17 @@ def main():
         project = workspace / 'project 한글 🙂 with spaces'
         project.mkdir()
         probe = subprocess.run([str(python), '-c',
-            'import json,duorbi; print(json.dumps({"module":duorbi.__file__}))'],
+            'import json,duorbi,importlib.util,importlib.metadata; '
+            'print(json.dumps({"module":duorbi.__file__, '
+            '"sdk":importlib.metadata.version("a2a-sdk"), '
+            '"a2acode_present":importlib.util.find_spec("a2acode") is not None}))'],
             cwd=workspace, env=env, check=True, text=True, capture_output=True)
-        module_path = Path(json.loads(probe.stdout)['module']).resolve()
+        installed = json.loads(probe.stdout)
+        module_path = Path(installed['module']).resolve()
         if not module_path.is_relative_to(workspace / 'venv'):
             raise SystemExit('Import did not come from the installed wheel.')
+        if installed['a2acode_present']:
+            raise SystemExit('The removed a2acode package is present in the clean environment.')
         subprocess.run([str(bindir / ('duorbi.exe' if os.name == 'nt' else 'duorbi')), '--version'],
                        cwd=workspace, env=env, check=True)
         subprocess.run([str(python), '-m', 'duorbi', 'info', '--project', str(project)],
@@ -54,6 +60,8 @@ def main():
                           'import_from_installed_venv': True,
                           'tests_outside_checkout': True,
                           'pythonpath_removed': True,
+                          'official_a2a_sdk': installed['sdk'],
+                          'a2acode_present': False,
                           'real_model_calls': 0}))
 
 

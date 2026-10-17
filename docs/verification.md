@@ -2,13 +2,15 @@
 
 This file records checks performed during public-source preparation. It does not certify a package-registry release.
 
+The server now uses the official A2A Python SDK directly. The earlier results below describe the former integration; current migration results are recorded separately at the end.
+
 ## Historical adapter evidence
 
 Before extraction, the adapter completed real Antigravity CLI 1.4.0 conversations on macOS, including a full A2A server shutdown/restart that retained both conversation IDs and recalled prior text. Private transcripts, real IDs and machine paths are intentionally excluded from this distribution. The computer itself was not rebooted for that check.
 
 ## Historical public package checks
 
-The public package is validated separately against published a2acode 0.8.0, using temporary databases and a fake CLI. The check procedure covers strict result handling, project isolation, conversation selection, store reopen, legacy-format migration, full HTTP server restart, process cleanup and installed-wheel imports.
+The former public package was validated separately against published a2acode 0.8.0, using temporary databases and a fake CLI. The check procedure covers strict result handling, project isolation, conversation selection, store reopen, legacy-format migration, full HTTP server restart, process cleanup and installed-wheel imports.
 
 The following results predate native Windows support. They were recorded locally on macOS, Python 3.13.2, against the then-current dependency lock:
 
@@ -52,3 +54,13 @@ Every job also passed source/archive guards and built the wheel/source archive. 
 The first Windows candidate exposed the virtual-environment Python redirector containment issue; the recorded successful candidate launches the base interpreter directly and closes Proactor pipe transports. That failure was fixed, not skipped. Native ARM64 Windows and Linux were not exercised by this matrix.
 
 Real Windows `agy.exe` discovery, interactive authentication and model conversation restoration require a separate live check and have not been validated by the fake CLI suite. An actual OS reboot and Linux runtime support are also unverified. A successful server restart does not establish an OS-reboot test.
+
+## Official SDK migration checks — 2026-10-17
+
+The current server uses official `a2a-sdk[http-server]` 1.2.2 directly. The former `a2acode` package is absent from the dependency lock and synchronized environment. SQLite schema version 1, project/store identity, default ports, CLI commands and the new/resume envelope remain unchanged; existing and imported contexts are resumed explicitly after a full server restart.
+
+Local Apple Silicon macOS / CPython 3.14.7 checks passed: 94 tests discovered, 82 passed and 12 Windows-only skips, both from the source checkout and a clean installed wheel outside the checkout. Source/archive guards and wheel/source builds passed. The clean-wheel probe reported SDK 1.2.2 and no `a2acode`. All three license/notice payloads matched checkout bytes in both archives; wheel metadata retained MIT for Duorbi and identified the SDK requirement separately.
+
+New coverage includes real REST and JSON-RPC calls, exact response/session metadata, legacy metadata fallback, same-context HTTP contention, explicit SDK cancellation, repeated cancellation during cleanup, completion/cancellation races, disconnected-stream continuation, mixed-part rejection, failed cleanup without artifact/save, and application lifespan shutdown with a real fake-CLI process tree. The POSIX-only open-stream SIGTERM test verifies bounded HTTP draining before shutdown; portable lifespan and Job Object tests cover Windows ownership separately. Existing lock, state-path, legacy/imported-store and native process tests remain in the suite.
+
+These local results do not establish native Windows execution. The four-job remote matrix must be checked for this migration's commit. Real Antigravity authentication/model restoration on Windows, native Windows ARM64, Linux and actual OS reboot remain unverified. The migration tests use fake CLI fixtures and make no real model calls.

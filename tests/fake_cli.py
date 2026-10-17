@@ -9,12 +9,13 @@ import sys
 import zipfile
 
 
-FAKE_SOURCE = '''import json,sys,uuid
+FAKE_SOURCE = '''import json,sys,uuid,os,subprocess,time
 from pathlib import Path
 
 def main():
     sys.stdout.reconfigure(encoding='utf-8')
     a=sys.argv
+    with Path('.fake-invocations').open('a') as calls: calls.write(str(os.getpid()) + chr(10))
     p=Path('.fake-agy.json')
     history=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}
     resume=a[a.index('--conversation')+1] if '--conversation' in a else None
@@ -22,10 +23,22 @@ def main():
     if resume and resume not in history:
         print(json.dumps({'status':'ERROR','error':'conversation unavailable'}))
         return
+    control_path=Path('.fake-control.json')
+    control=json.loads(control_path.read_text(encoding='utf-8')) if control_path.exists() else {}
+    if control.get('wait'):
+        child=None
+        if control.get('child'):
+            child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)'],
+                                   stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        Path('.fake-pids.json').write_text(json.dumps({'owner':os.getpid(),'child':child.pid if child else None}))
+        while not Path('.fake-release').exists(): time.sleep(.02)
+    if control.get('status', 'SUCCESS') != 'SUCCESS':
+        print(json.dumps({'status':control['status'],'error':'fixture failure'}))
+        return
     key=resume or str(uuid.uuid4())
     if not resume: history[key]=prompt
     p.write_text(json.dumps(history,ensure_ascii=False),encoding='utf-8')
-    print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[key]},ensure_ascii=False))
+    print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':control.get('response',history[key])},ensure_ascii=False))
 '''
 
 

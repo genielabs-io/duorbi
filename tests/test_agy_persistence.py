@@ -5,10 +5,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from a2acode.backends.base import RunRequest, Result
 from duorbi.agy_backend import AgyBackend
 from duorbi.session_store import SessionStore
-from test_agy_backend import Collector
 
 
 def framed(text, conversation=None):
@@ -35,19 +33,17 @@ print(json.dumps({'status':'SUCCESS','conversation_id':resume or 'agy-first',
         return AgyBackend(self.root, command=self.command, store=SessionStore(self.root / 'state'))
 
     async def test_new_backend_restores_persisted_id_without_upstream_memory(self):
-        first = Collector()
-        await self.backend().drive(first, RunRequest(framed('hello'), context_id='ctx'))
+        await self.backend().run(framed('hello'), context_id='ctx')
         self.assertEqual(self.store.get(self.root, 'ctx')['conversation_id'], 'agy-first')
-        second = Collector()
-        await self.backend().drive(second, RunRequest(framed('again', 'agy-first'), context_id='ctx'))
-        self.assertEqual(second.events[0].text, 'agy-first')
+        second = await self.backend().run(framed('again', 'agy-first'), context_id='ctx')
+        self.assertEqual(second['response'], 'agy-first')
 
     async def test_unknown_or_mismatched_resume_never_launches_cli(self):
         self.store.save(self.root, 'ctx', 'real-id')
         for context, expected in [('missing', 'real-id'), ('ctx', 'wrong-id')]:
             with patch('duorbi.agy_backend.asyncio.create_subprocess_exec') as spawn:
                 with self.assertRaises(ValueError):
-                    await self.backend().drive(Collector(), RunRequest(framed('again', expected), context_id=context))
+                    await self.backend().run(framed('again', expected), context_id=context)
                 spawn.assert_not_called()
         self.assertEqual(self.store.get(self.root, 'ctx')['conversation_id'], 'real-id')
 
@@ -55,15 +51,13 @@ print(json.dumps({'status':'SUCCESS','conversation_id':resume or 'agy-first',
         self.store.save(self.root, 'ctx', 'real-id')
         for prompt in ['raw text', framed('hello')]:
             with self.assertRaises(ValueError):
-                await self.backend().drive(Collector(), RunRequest(prompt, context_id='ctx'))
+                await self.backend().run(prompt, context_id='ctx')
 
     async def test_failed_durable_save_never_publishes_success(self):
-        sink = Collector()
         backend = self.backend()
         with patch.object(backend.store, 'save', side_effect=OSError('disk full')):
             with self.assertRaisesRegex(OSError, 'disk full'):
-                await backend.drive(sink, RunRequest(framed('hello'), context_id='ctx'))
-        self.assertFalse(any(isinstance(e, Result) for e in sink.events))
+                await backend.run(framed('hello'), context_id='ctx')
         self.assertIsNone(self.store.get(self.root, 'ctx'))
         with self.store.claim(self.root, 'ctx'):
             pass
@@ -73,7 +67,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':resume or 'agy-first',
         backend = self.backend()
         backend.command = [sys.executable, '-c', 'print(\'{"status":"SUCCESS","conversation_id":"wrong","response":"bad"}\')']
         with self.assertRaisesRegex(RuntimeError, 'different conversation'):
-            await backend.drive(Collector(), RunRequest(framed('again', 'real-id'), context_id='ctx'))
+            await backend.run(framed('again', 'real-id'), context_id='ctx')
         self.assertEqual(self.store.get(self.root, 'ctx')['conversation_id'], 'real-id')
 
 

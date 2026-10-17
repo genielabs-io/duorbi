@@ -16,8 +16,8 @@ PRIVATE_PARTS = {'state', 'runtime', 'logs', 'backups', 'upstream', '.venv',
 SOURCE_DIRS = ('src', 'tests', 'scripts', 'docs', 'examples', 'assets', 'licenses', '.github')
 SOURCE_FILES = ('README.md', 'README.ko.md', 'INSTALL.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                 'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md',
-                'pyproject.toml', 'uv.lock', '.gitignore', 'licenses/a2acode-LICENSE.txt')
-LICENSE_PAYLOADS = ('LICENSE', 'THIRD_PARTY_NOTICES.md', 'licenses/a2acode-LICENSE.txt')
+                'pyproject.toml', 'uv.lock', '.gitignore', 'licenses/a2a-sdk-LICENSE.txt')
+LICENSE_PAYLOADS = ('LICENSE', 'THIRD_PARTY_NOTICES.md', 'licenses/a2a-sdk-LICENSE.txt')
 PERSONAL_PATH = re.compile(r'/(?:Users|Volumes)/')
 PRIVATE_KEY = re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----')
 

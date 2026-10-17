@@ -34,8 +34,8 @@ Build first. The verifier creates a temporary virtual environment, installs the 
 
 ## Dependency updates
 
-`a2acode` is pinned because Duorbi uses its Python backend interfaces. Change the pin deliberately, resolve `uv.lock`, and verify the complete fake-CLI HTTP restart suite plus installed wheel. Do not patch a developer's nested upstream checkout to make tests pass.
+The official `a2a-sdk[http-server]` is pinned because Duorbi uses its server execution, routing and protobuf interfaces. Change the pin deliberately, resolve `uv.lock`, and verify the complete fake-CLI HTTP restart/cancellation suite plus installed wheel. Keep subprocess ownership and durable conversation recovery independent of SDK in-memory task history. Do not patch installed SDK files to make tests pass.
 
 ## Release preparation
 
-Review source and built archives, run clean-wheel verification, and read the compatibility/limitations documentation. Preserve the MIT license, THIRD_PARTY_NOTICES and the unmodified a2acode Apache license in both wheel and source archive; the archive guard checks their presence. When upgrading dependencies or changing distribution formats, repeat the [license and distribution review](docs/license-review.md), including applicable upstream NOTICE and source-availability obligations. Publish only after the owner authorizes the actual remote destination and release. Never include a local research workspace, its runtime state or its Git history in a source release.
+Review source and built archives, run clean-wheel verification, and read the compatibility/limitations documentation. Preserve the MIT license, THIRD_PARTY_NOTICES and the unmodified A2A SDK Apache license in both wheel and source archive; the archive guard checks their presence. When upgrading dependencies or changing distribution formats, repeat the [license and distribution review](docs/license-review.md), including applicable upstream NOTICE and source-availability obligations. Publish only after the owner authorizes the actual remote destination and release. Never include a local research workspace, its runtime state or its Git history in a source release.

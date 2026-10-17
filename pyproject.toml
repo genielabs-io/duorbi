@@ -9,7 +9,7 @@ description = "Project-scoped local A2A text collaboration with Antigravity (mac
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "licenses/a2acode-LICENSE.txt"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "licenses/a2a-sdk-LICENSE.txt"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -21,8 +21,7 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "a2acode==0.8.0",
-  "a2a-sdk>=1.1,<2",
+  "a2a-sdk[http-server]==1.2.2",
   "httpx>=0.28.1,<1",
   "protobuf>=6.33.5,<7",
   "uvicorn>=0.49,<1",

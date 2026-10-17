@@ -2,6 +2,10 @@
 
 ## Unreleased — source version 0.1.0
 
+- Replace a2acode with a Duorbi text executor and server assembly using the official A2A Python SDK. Preserve existing conversation IDs, SQLite schema, CLI commands and Mac/Windows process handling.
+- Use provider-neutral result metadata and advertise only supported text-collaboration capabilities.
+- Update SDK license provenance, packaged notices, architecture and upgrade instructions.
+
 - Add native Windows state paths, byte-range locks and Job Object process-tree containment while retaining macOS paths, locks and graceful cleanup.
 - Preserve literal argv and UTF-8 pipes; require native `agy.exe` on Windows.
 - Configure macOS/Windows Python 3.13/3.14 source and installed-wheel CI, with portable fake-CLI HTTP/restart and Unicode coverage. See [verification scope](docs/verification.md) for executed checks.

@@ -90,6 +90,8 @@ The tool directory reported by `uv tool dir --bin` must be visible to the agent,
 
 Compare `duorbi --version` with `[project].version` in the selected checkout's `pyproject.toml`. The package version may stay unchanged across multiple `main` commits, so also retain the source commit SHA. A successful `--help` checks that the launcher can import the package.
 
+The server uses the official A2A Python SDK. When upgrading from the former integration, stop the old server and retain the same canonical project path and persistent state directory. Existing conversation IDs need no conversion. Preserve the state directory; the temporary check below is separate. See [upgrade continuity](docs/architecture.md#upgrading-from-the-former-server-integration).
+
 ## 4. Integrate with Codex
 
 Read [the integration guide](docs/codex-integration.md), then inspect the templates from the selected checkout:

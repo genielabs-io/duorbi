@@ -51,3 +51,38 @@ class BridgeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ClientCompatibilityTests(unittest.IsolatedAsyncioTestCase):
+    async def test_legacy_session_metadata_and_empty_completion_keep_artifact(self):
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, patch
+        from a2a.types import (Artifact, Message, Part, Role, StreamResponse, Task,
+                               TaskArtifactUpdateEvent, TaskState, TaskStatus,
+                               TaskStatusUpdateEvent)
+        from duorbi.bridge import call
+        events = [
+            StreamResponse(task=Task(id='task', context_id='context',
+                                     status=TaskStatus(state=TaskState.TASK_STATE_WORKING))),
+            StreamResponse(artifact_update=TaskArtifactUpdateEvent(
+                task_id='task', context_id='context',
+                artifact=Artifact(artifact_id='response', name='response', parts=[Part(text='exact\n')]))),
+            StreamResponse(status_update=TaskStatusUpdateEvent(
+                task_id='task', context_id='context', status=TaskStatus(
+                    state=TaskState.TASK_STATE_COMPLETED,
+                    message=Message(role=Role.ROLE_AGENT, metadata={'claude_session_id': 'legacy-id'}))))]
+        class Client:
+            async def send_message(self, request):
+                for event in events:
+                    yield event
+            async def close(self):
+                pass
+        args = SimpleNamespace(text='hello', continue_latest=False, context=None, timeout=2)
+        settings = {'project': 'fixture', 'url': 'http://127.0.0.1:19100/'}
+        with patch('duorbi.bridge.inspect_card', new=AsyncMock()), \
+             patch('a2a.client.create_client', new=AsyncMock(return_value=Client())), \
+             patch('duorbi.bridge.emit') as emit:
+            self.assertEqual(await call(args, settings), 0)
+        final = emit.call_args.args[0]
+        self.assertEqual(final['response'], 'exact\n')
+        self.assertEqual(final['agent_session_id'], 'legacy-id')

@@ -6,7 +6,7 @@
 
 **두 에이전트, 계속 이어지는 대화.**
 
-[a2acode](https://github.com/kanywst/a2acode)의 A2A 서버를 사용하는 로컬 브리지입니다. Codex가 주도하고 Antigravity가 설계 논의와 코드 검토에 참여합니다. 프로젝트별 대화 ID를 저장해 서버를 다시 시작해도 같은 논의를 이어갑니다.
+[공식 A2A Python SDK](https://github.com/a2aproject/a2a-python)로 서버를 구성한 로컬 브리지입니다. Codex가 주도하고 Antigravity가 설계 논의와 코드 검토에 참여합니다. 프로젝트별 대화 ID를 저장해 서버를 다시 시작해도 같은 논의를 이어갑니다.
 
 **에이전트에게 설치 맡기기**
 
@@ -24,7 +24,7 @@ https://github.com/genielabs-io/duorbi/blob/main/INSTALL.md 를 읽고
 ```mermaid
 flowchart LR
     C["Codex"] <--> D["Duorbi CLI"]
-    D <-->|"A2A / loopback HTTP"| S["a2acode<br/>A2A 서버"]
+    D <-->|"A2A / loopback HTTP"| S["Duorbi 서버<br/>공식 A2A SDK"]
     S <-->|"Headless JSON"| A["Antigravity<br/>agy · plan 모드"]
     S <--> DB[("SQLite<br/>프로젝트별 대화 ID")]
 
@@ -78,9 +78,9 @@ duorbi status --project /absolute/path/to/project
 duorbi call '이 설계를 검토해 줘. 파일은 수정하지 마.' --new --project /absolute/path/to/project
 ```
 
-출력은 줄마다 하나의 JSON입니다. 마지막 `type: result`에 `response`, `state`, 성공 시 `context_id`와 `agent_session_id`가 들어 있습니다. **종료 코드 0이며 `state`가 `completed`인 경우만 성공**입니다. 실패·미완료는 2, upstream의 입력 대기 상태는 3이며 이 어댑터는 승인 응답을 중계하지 않습니다. 잘못된 CLI 문법은 argparse가 종료 코드 2로 처리합니다.
+출력은 줄마다 하나의 JSON입니다. 마지막 `type: result`에 `response`, `state`, 성공 시 `context_id`와 `agent_session_id`가 들어 있습니다. **종료 코드 0이며 `state`가 `completed`인 경우만 성공**입니다. 실패·미완료는 2입니다. 종료 코드 3은 입력 대기 응답에 예약되어 있으며, 이 텍스트 전용 어댑터는 승인 응답을 중계하지 않고 지원하지 않는 CLI 상태를 실패로 처리합니다. 잘못된 CLI 문법은 argparse가 종료 코드 2로 처리합니다.
 
-위 예제는 POSIX 경로를 사용합니다. PowerShell에서는 따옴표로 감싼 Windows 절대경로로 바꾸고 두 터미널에 같은 프로젝트·저장소를 지정하세요. 긴 프롬프트는 셸이 내용을 해석하지 않도록 파일로 전달하세요.
+위 예제는 POSIX 경로를 사용합니다. PowerShell에서는 따옴표로 감싼 Windows 절대경로로 바꾸고 두 터미널에 같은 프로젝트·저장소를 지정하세요. 프롬프트는 셸이 내용을 해석하지 않도록 파일로 전달하세요. 내부적으로는 `agy -p` 인자로 넘기므로 OS의 명령행 길이 제한은 적용됩니다.
 
 ```sh
 duorbi call - --new --project /absolute/path/to/project < review-request.txt
@@ -151,4 +151,4 @@ uv run --frozen python scripts/check_public.py --archives dist
 
 테스트는 임시 DB와 가짜 CLI로 로컬 HTTP·서버 재시작까지 확인하며 계정·모델 호출이 필요하지 않습니다. macOS·Windows의 Python 3.13/3.14 CI를 구성했습니다. CI 구성과 실제 실행 결과는 구분해서 확인하세요. [기여 안내](CONTRIBUTING.md)
 
-Duorbi 자체 코드·문서는 [MIT](LICENSE), 별도 의존성인 [a2acode](https://github.com/kanywst/a2acode) 0.8.0은 Apache-2.0입니다. Duorbi가 추가한 부분은 Antigravity 어댑터, CLI와 프로젝트별 대화 저장이며, A2A 서버는 a2acode가 제공합니다. 상위 서버 소스는 포함하거나 수정하지 않습니다. wheel과 소스 압축파일 모두에 [출처·의존성 고지](THIRD_PARTY_NOTICES.md)와 [상위 라이선스 본문](licenses/a2acode-LICENSE.txt)을 포함합니다. 검토 범위와 재배포 조건은 [라이선스 검토 문서](docs/license-review.md)에 정리했습니다.
+Duorbi가 작성한 서버 어댑터·CLI·저장 기능·문서는 [MIT](LICENSE)입니다. 프로토콜 처리는 별도로 설치하는 [공식 A2A Python SDK](https://github.com/a2aproject/a2a-python) (`a2a-sdk` 1.2.2, Apache-2.0)를 사용합니다. Duorbi가 SDK 서버를 구성하고 Antigravity에 연결하며, SDK 소스를 복사해 배포하지 않습니다. wheel과 소스 압축파일 모두에 [출처·의존성 고지](THIRD_PARTY_NOTICES.md)와 [SDK 라이선스 본문](licenses/a2a-sdk-LICENSE.txt)을 포함합니다. 다른 의존성에는 각각의 조건이 적용됩니다. [라이선스 검토 문서](docs/license-review.md)를 참고하세요.

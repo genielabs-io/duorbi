@@ -1,4 +1,4 @@
-"""Project-scoped Antigravity text collaboration over a2acode HTTP."""
+"""Project-scoped Antigravity text collaboration over official A2A HTTP."""
 
 import argparse
 import asyncio
@@ -55,15 +55,16 @@ def status_code(state):
 
 def serve(args, settings):
     import uvicorn
-    from a2acode.server import build_app
+    from .a2a_server import build_app
     from .agy_backend import AgyBackend
 
     backend = AgyBackend(settings['project'], store=args.store)
     app = build_app(backend, url=settings['url'], card_name=settings['name'],
-                    card_description='Project-scoped Antigravity headless JSON agent via a2acode. '
+                    card_description='Project-scoped Antigravity headless JSON text agent. '
                     'Text collaboration in plan mode; no A2A tool-approval relay.')
     emit({'type': 'server', 'backend': backend.name, **settings})
-    uvicorn.run(app, host='127.0.0.1', port=settings['port'], log_level='info')
+    uvicorn.run(app, host='127.0.0.1', port=settings['port'], log_level='info',
+                timeout_graceful_shutdown=1)
 
 
 async def inspect_card(settings):
@@ -112,17 +113,17 @@ async def call(args, settings):
         result['state'] = TaskState.Name(value.state).removeprefix('TASK_STATE_').lower()
         detail = ''.join(p.text for p in value.message.parts if p.text)
         metadata = MessageToDict(value.message).get('metadata', {})
-        # Upstream uses this historical field name for every backend.
-        if metadata.get('claude_session_id'):
-            result['agent_session_id'] = metadata['claude_session_id']
+        session = metadata.get('agent_session_id') or metadata.get('claude_session_id')
+        if session:
+            result['agent_session_id'] = session
         if 'num_turns' in metadata:
             result['num_turns'] = metadata['num_turns']
         result['detail'] = detail
-        result['permission'] = metadata.get('a2acode_permission')
+        result['permission'] = None
         if result['state'] == 'completed':
-            # a2acode carries the entire answer here, including text streamed
-            # before an earlier permission pause in a separate client call.
-            result['response'] = detail
+            # Completion carries the exact answer; older peers may omit it.
+            if value.message.parts:
+                result['response'] = detail
         emit({'type': 'status', 'state': result['state'], 'detail': detail,
               'permission': result['permission']})
 
