@@ -12,7 +12,20 @@ from . import __version__
 
 
 def emit(data):
-    print(json.dumps(data, ensure_ascii=False), flush=True)
+    text = json.dumps(data, ensure_ascii=False) + '\n'
+    stream = getattr(sys.stdout, 'buffer', None)
+    if stream is None:  # StringIO and other text-only embedding/test streams.
+        sys.stdout.write(text)
+        sys.stdout.flush()
+    else:
+        stream.write(text.encode('utf-8'))
+        stream.flush()
+
+
+def read_stdin():
+    """The piped prompt is UTF-8, independently of the console code page."""
+    stream = getattr(sys.stdin, 'buffer', None)
+    return stream.read().decode('utf-8') if stream is not None else sys.stdin.read()
 
 
 def project_settings(project, port):
@@ -70,7 +83,7 @@ async def call(args, settings):
     from a2a.types import Message, Part, Role, SendMessageRequest, TaskState
     from google.protobuf.json_format import MessageToDict
 
-    prompt = sys.stdin.read() if args.text == '-' else args.text
+    prompt = read_stdin() if args.text == '-' else args.text
     if not prompt.strip():
         raise ValueError('Message is empty')
     from .agy_request import encode_request

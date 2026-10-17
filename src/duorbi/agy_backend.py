@@ -12,6 +12,9 @@ from dataclasses import replace
 
 from a2acode.backends.base import Result, TextDelta
 
+from .processes import (OwnedWindowsProcess, finish_cleanup, spawn_owned_process,
+                        stop_windows_process)
+
 
 def diagnostic_hint(*messages):
     """Classify diagnostics without copying arbitrary CLI output into logs."""
@@ -79,6 +82,12 @@ async def signal_group(pid, sig):
 
 
 async def stop_process(proc, grace=5):
+    if isinstance(proc, OwnedWindowsProcess):
+        return await finish_cleanup(stop_windows_process(proc))
+    return await finish_cleanup(_stop_posix_process(proc, grace))
+
+
+async def _stop_posix_process(proc, grace=5):
     # A finished leader can leave descendants holding its stdout pipe open.
     # The process group belongs exclusively to this invocation.
     try:
@@ -102,10 +111,12 @@ class AgyBackend:
     name = 'antigravity'
 
     def __init__(self, cwd, command=None, timeout=180, exit_grace=10, store=None):
-        executable = shutil.which('agy') if command is None else None
+        executable = shutil.which('agy.exe' if os.name == 'nt' else 'agy') if command is None else None
         if command is None and not executable:
             raise ValueError('agy executable is not on PATH')
         self.command = command or [executable]
+        if os.name == 'nt' and not str(self.command[0]).lower().endswith('.exe'):
+            raise ValueError('Windows requires a native .exe executable; .cmd/.bat wrappers are unsupported')
         self.cwd = cwd
         self.timeout = timeout
         self.exit_grace = exit_grace
@@ -143,17 +154,14 @@ class AgyBackend:
                        '--mode', 'plan', '--print-timeout', f'{self.timeout}s']
             if request.resume:
                 command.extend(['--conversation', request.resume])
-            proc = await asyncio.create_subprocess_exec(
-                *command, cwd=self.cwd, stdin=asyncio.subprocess.DEVNULL,
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-                start_new_session=True)
+            proc = await spawn_owned_process(command, cwd=self.cwd)
             async with asyncio.timeout(self.timeout + self.exit_grace):
                 stdout, stderr = await proc.communicate()
             value = parse_result(stdout, proc.returncode, request.resume, stderr)
         finally:
             try:
                 if proc is not None:
-                    await stop_process(proc)
+                    await finish_cleanup(stop_process(proc))
             finally:
                 self.active.discard(context)
         # Publish success only after cleanup succeeds. In particular, do not

@@ -14,6 +14,15 @@ command -v agy
 duorbi --version
 ```
 
+On Windows, use PowerShell instead:
+
+```powershell
+Get-Command duorbi, agy
+duorbi --version
+```
+
+The Antigravity launcher must resolve to native `agy.exe`; `.bat`/`.cmd` wrappers are rejected. `uv tool dir --bin` reports the Duorbi launcher directory. See [INSTALL.md](../INSTALL.md) for platform prerequisites and literal UTF-8 stdin examples.
+
 If Codex does not inherit your shell PATH, use the resolved absolute `duorbi` executable path in your local agent instructions. Do not put your personal executable path into a public copy of the template.
 
 ## Agent and project instructions
@@ -27,7 +36,7 @@ See the official [Codex subagent documentation](https://developers.openai.com/co
 
 ## Suggested workflow
 
-The role resolves the actual target project's absolute path, checks `info` and `status`, starts a matching loopback server if necessary, and retains its process handle. It sends scoped excerpts for review via stdin. It retains a returned context ID for follow-up turns, or inspects project `sessions` when resuming after a new Codex chat or bridge restart.
+The role resolves the actual target project's absolute path, checks `info` and `status`, starts a matching loopback server if necessary, and retains its process handle. It sends scoped excerpts for review via UTF-8 stdin, using a literal PowerShell here-string or a prompt file to avoid interpolation. It launches argv directly without a shell, including on Windows. It retains a returned context ID for follow-up turns, or inspects project `sessions` when resuming after a new Codex chat or bridge restart.
 
 If an unrelated process occupies the derived port, choose another `--port` and pass it to every server/client command. Do not stop another task's server. If using a custom state directory, pass the same `--state-dir` or environment setting everywhere.
 

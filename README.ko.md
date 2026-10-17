@@ -42,10 +42,10 @@ Antigravity가 문서로 제공하는 headless CLI를 사용합니다. 기존 �
 
 ## 준비
 
-- **`main` 소스에서 설치하는 macOS 시험판**, Python **3.13 이상**, [uv](https://docs.astral.sh/uv/).
-- `PATH`에서 실행할 수 있는 Antigravity CLI `agy`. 원래 어댑터는 `agy 1.4.0`으로 실제 협업을 검증했습니다. 공개 패키지의 검증 범위는 [검증 문서](docs/verification.md)에 구분했습니다.
+- **`main` 소스에서 설치하는 macOS·Windows 네이티브 시험판**, Python **3.13 이상**, [uv](https://docs.astral.sh/uv/).
+- `PATH`에서 실행할 수 있는 Antigravity CLI `agy`. Windows에서는 네이티브 `agy.exe`가 필요하며 `.bat`·`.cmd` 실행기는 거부합니다. 원래 어댑터는 macOS에서 `agy 1.4.0`으로 실제 협업을 검증했습니다. Windows 자동 검증은 가짜 CLI를 사용하며 실제 Antigravity 로그인·협업은 아직 검증하지 않았습니다. [검증 범위](docs/verification.md)를 확인하세요.
 - 작업할 프로젝트에서 대화형 `agy`를 실행해 로그인을 먼저 완료합니다. Duorbi는 인증정보를 수집하거나 Antigravity를 설치하지 않습니다.
-- Linux 실행은 아직 검증하지 않았습니다. POSIX 파일 잠금과 프로세스 그룹을 사용하므로 Windows 네이티브 실행은 지원하지 않습니다.
+- Linux 실행은 아직 검증하지 않았습니다.
 
 ## 직접 설치
 
@@ -59,7 +59,9 @@ duorbi --version
 duorbi --help
 ```
 
-uv 도구 실행 경로가 터미널과 Codex 실행 환경의 `PATH`에 있어야 합니다. 전역 도구 설치 대신 이 폴더에서 `uv sync --frozen` 후 `uv run --frozen duorbi ...`를 사용해도 됩니다. 패키지 레지스트리 등록 없이 소스에서 설치할 수 있습니다.
+위 명령은 POSIX 셸과 PowerShell에서 사용할 수 있습니다. Windows 실행 파일 확인은 `Get-Command duorbi, agy`를 사용합니다. PowerShell 사전 점검·경로·UTF-8 예제는 [설치 안내](INSTALL.md)를 참고하세요.
+
+`uv tool dir --bin`으로 확인한 도구 실행 경로가 터미널과 Codex 실행 환경의 `PATH`에 있어야 합니다. 전역 도구 설치 대신 이 폴더에서 `uv sync --frozen` 후 `uv run --frozen duorbi ...`를 사용해도 됩니다. 패키지 레지스트리 등록 없이 소스에서 설치할 수 있습니다.
 
 ## 첫 협업
 
@@ -78,10 +80,19 @@ duorbi call '이 설계를 검토해 줘. 파일은 수정하지 마.' --new --p
 
 출력은 줄마다 하나의 JSON입니다. 마지막 `type: result`에 `response`, `state`, 성공 시 `context_id`와 `agent_session_id`가 들어 있습니다. **종료 코드 0이며 `state`가 `completed`인 경우만 성공**입니다. 실패·미완료는 2, upstream의 입력 대기 상태는 3이며 이 어댑터는 승인 응답을 중계하지 않습니다. 잘못된 CLI 문법은 argparse가 종료 코드 2로 처리합니다.
 
-긴 프롬프트는 셸이 내용을 해석하지 않도록 파일로 전달하세요.
+위 예제는 POSIX 경로를 사용합니다. PowerShell에서는 따옴표로 감싼 Windows 절대경로로 바꾸고 두 터미널에 같은 프로젝트·저장소를 지정하세요. 긴 프롬프트는 셸이 내용을 해석하지 않도록 파일로 전달하세요.
 
 ```sh
 duorbi call - --new --project /absolute/path/to/project < review-request.txt
+```
+
+PowerShell에서는 UTF-8을 지정하고 변수를 해석하지 않는 here-string을 사용합니다. 닫는 `'@`는 새 줄의 맨 앞에 둡니다.
+
+```powershell
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+@'
+이 설계를 검토해 줘. 파일은 수정하지 말고 $변수는 글자 그대로 읽어 줘.
+'@ | duorbi call - --new --project 'C:\projects\my-project'
 ```
 
 ## 재시작·재부팅 후 이어가기
@@ -115,11 +126,12 @@ duorbi call '지난 논의를 이어가자.' --continue --project /absolute/path
 
 ## 저장 위치와 실행 범위
 
-macOS 기본 데이터베이스:
+기본 저장 폴더이며 DB 파일 이름은 `conversations.sqlite3`입니다.
 
-```text
-~/Library/Application Support/Duorbi/conversations.sqlite3
-```
+| 운영체제 | 폴더 |
+|---|---|
+| macOS | `~/Library/Application Support/Duorbi` |
+| Windows | `%LOCALAPPDATA%\Duorbi`, 미설정 시 `~/AppData/Local/Duorbi` |
 
 다른 POSIX 시스템의 기본 폴더는 `$XDG_STATE_HOME/duorbi` 또는 `~/.local/state/duorbi`입니다. `DUORBI_STATE_DIR`, `--state-dir` 순으로 덮어쓸 수 있으며 명령 옵션이 우선합니다. 서버와 클라이언트에 같은 저장소를 지정하세요. `duorbi info --project PATH`로 실제 설정을 확인합니다.
 
@@ -137,6 +149,6 @@ uv build
 uv run --frozen python scripts/check_public.py --archives dist
 ```
 
-테스트는 임시 DB와 가짜 `agy`로 로컬 HTTP·서버 재시작까지 확인하며 계정·모델 호출이 필요하지 않습니다. [기여 안내](CONTRIBUTING.md)
+테스트는 임시 DB와 가짜 CLI로 로컬 HTTP·서버 재시작까지 확인하며 계정·모델 호출이 필요하지 않습니다. macOS·Windows의 Python 3.13/3.14 CI를 구성했습니다. CI 구성과 실제 실행 결과는 구분해서 확인하세요. [기여 안내](CONTRIBUTING.md)
 
 Duorbi 자체 코드·문서는 [MIT](LICENSE), 별도 의존성인 [a2acode](https://github.com/kanywst/a2acode) 0.8.0은 Apache-2.0입니다. Duorbi가 추가한 부분은 Antigravity 어댑터, CLI와 프로젝트별 대화 저장이며, A2A 서버는 a2acode가 제공합니다. 상위 서버 소스는 포함하거나 수정하지 않습니다. wheel과 소스 압축파일 모두에 [출처·의존성 고지](THIRD_PARTY_NOTICES.md)와 [상위 라이선스 본문](licenses/a2acode-LICENSE.txt)을 포함합니다. 검토 범위와 재배포 조건은 [라이선스 검토 문서](docs/license-review.md)에 정리했습니다.

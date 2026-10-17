@@ -2,7 +2,7 @@
 
 This is an installation runbook for Codex or another coding agent. Follow the user's requested scope and your host's approval rules. This document does not grant extra permissions. Use authorization already given; ask only for missing decisions or access.
 
-**Supported baseline:** macOS, Python 3.13+, uv, and authenticated Antigravity CLI `agy`. Duorbi is a preview installed from `main`. Linux is unverified; native Windows is unsupported.
+**Supported baseline:** macOS or native Windows, Python 3.13+, uv, and authenticated Antigravity CLI `agy` (`agy.exe` on Windows). Duorbi is a preview installed from `main`; its package version remains 0.1.0. Linux is unverified. Automated Windows coverage uses a fake CLI; real Windows Antigravity login/collaboration is a separate, not-yet-verified check. See [verification](docs/verification.md).
 
 ## 1. Establish the target and scope
 
@@ -20,7 +20,7 @@ Read applicable local instructions first. Inspect existing Duorbi installations 
 
 ## 2. Check prerequisites
 
-Run in the same execution environment the agent will use:
+Run in the same execution environment the agent will use. On macOS/POSIX:
 
 ```sh
 uname -s
@@ -33,6 +33,19 @@ uv tool list
 command -v duorbi
 ```
 
+On Windows, use PowerShell:
+
+```powershell
+[System.Environment]::OSVersion.VersionString
+Get-Command git, uv, agy
+uv --version
+agy --version
+uv tool list
+Get-Command duorbi -ErrorAction SilentlyContinue
+```
+
+Resolve the native executable with `(Get-Command agy -CommandType Application).Source` and check that it ends in `.exe`. Duorbi rejects `.bat`/`.cmd` wrappers because it never starts a command shell. Use the official [Antigravity CLI setup](https://antigravity.google/docs/getting-started?tab=cli); do not substitute a wrapper when `agy.exe` is absent.
+
 A missing `duorbi` is expected on a new installation. Report missing prerequisites clearly. Install them only within the user's authorized scope; otherwise provide the missing step. [uv installation instructions](https://docs.astral.sh/uv/getting-started/installation/) cover uv. Obtain Antigravity CLI from its official distribution. Do not substitute Gemini CLI, `gemini -p`, an unrelated package named `agy`, or a guessed download URL.
 
 `agy --version` does not prove authentication. If login is needed, have the user run interactive `agy` in `PROJECT_DIR` and complete it privately. Never request tokens or login codes in chat, read credential stores, or run a model prompt just to probe login. Non-model installation checks can proceed before login.
@@ -40,6 +53,8 @@ A missing `duorbi` is expected on a new installation. Report missing prerequisit
 ## 3. Install the CLI
 
 Replace the two placeholder values with the paths established in step 1; quote paths throughout. Do not assign to `HOME` or `CODEX_HOME`.
+
+macOS/POSIX:
 
 ```sh
 PROJECT_DIR='/absolute/path/to/target-project'
@@ -49,6 +64,20 @@ git -C "$SOURCE_DIR" rev-parse HEAD
 uv tool install --python 3.13 "$SOURCE_DIR"
 uv tool dir --bin
 command -v duorbi
+duorbi --version
+duorbi --help
+```
+
+PowerShell:
+
+```powershell
+$PROJECT_DIR = 'C:\projects\target-project'
+$SOURCE_DIR = 'C:\tools\duorbi-checkout'
+git clone --branch main --depth 1 https://github.com/genielabs-io/duorbi.git "$SOURCE_DIR"
+git -C "$SOURCE_DIR" rev-parse HEAD
+uv tool install --python 3.13 "$SOURCE_DIR"
+uv tool dir --bin
+Get-Command duorbi
 duorbi --version
 duorbi --help
 ```
@@ -76,10 +105,19 @@ Do not add a Gemini MCP server, change the user's model, enable approval bypasse
 
 ## 5. Verify without a model call
 
-Use a temporary state directory to avoid changing the user's conversation database:
+Use a temporary state directory to avoid changing the user's conversation database. Keep the `PROJECT_DIR` value from step 3. On macOS/POSIX:
 
 ```sh
 CHECK_STATE=$(mktemp -d "${TMPDIR:-/tmp}/duorbi-install.XXXXXX")
+duorbi info --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
+duorbi sessions --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
+```
+
+PowerShell:
+
+```powershell
+$CHECK_STATE = Join-Path ([System.IO.Path]::GetTempPath()) ("duorbi-install-" + [guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path "$CHECK_STATE" | Out-Null
 duorbi info --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
 duorbi sessions --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
 ```
@@ -88,11 +126,23 @@ Expect exit 0, the correct canonical project and state paths, a loopback URL, an
 
 For a transport check, start the server below in a managed terminal/process and retain its handle. In another terminal, pass the **same** values to `status`:
 
+macOS/POSIX (copy the exact variable values to terminal B):
+
 ```sh
 # Terminal/process A
 duorbi serve --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
 
 # Terminal/process B: define PROJECT_DIR and CHECK_STATE to the same values first
+duorbi status --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
+```
+
+PowerShell (copy the exact variable values to terminal B):
+
+```powershell
+# Terminal/process A
+duorbi serve --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
+
+# Terminal/process B: define $PROJECT_DIR and $CHECK_STATE to the same values first
 duorbi status --project "$PROJECT_DIR" --state-dir "$CHECK_STATE"
 ```
 
@@ -104,11 +154,32 @@ Stop only the server you started, using its handle or Ctrl+C. Once stopped, remo
 
 When authorized and authenticated, start/reuse a matching server using the user's intended persistent state settings. Keep the same project, state directory and port on all server/client commands:
 
+macOS/POSIX: a quoted heredoc passes the prompt literally via stdin.
+
 ```sh
-duorbi call 'Remember the word orbit. Reply briefly. Do not edit files.' --new --project "$PROJECT_DIR"
+duorbi call - --new --project "$PROJECT_DIR" <<'PROMPT'
+Remember the word orbit. Reply briefly. Do not edit files.
+PROMPT
 # Read context_id from the successful result, then use that exact value:
-duorbi call 'What word did I ask you to remember? Do not edit files.' --context SAVED_CONTEXT_ID --project "$PROJECT_DIR"
+duorbi call - --context SAVED_CONTEXT_ID --project "$PROJECT_DIR" <<'PROMPT'
+What word did I ask you to remember? Do not edit files.
+PROMPT
 ```
+
+PowerShell: set the pipe encoding and use single-quoted here-strings, which preserve literal `$variables` and quotes. Closing `'@` markers must start their own lines.
+
+```powershell
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+@'
+Remember the word orbit. Reply briefly. Do not edit files.
+'@ | duorbi call - --new --project "$PROJECT_DIR"
+# Read context_id from the successful result, then use that exact value:
+@'
+What word did I ask you to remember? Do not edit files.
+'@ | duorbi call - --context SAVED_CONTEXT_ID --project "$PROJECT_DIR"
+```
+
+For an existing UTF-8 file, use `< review-request.txt` on POSIX, or `Get-Content -Raw -Encoding UTF8 review-request.txt | duorbi call - --new --project "$PROJECT_DIR"` in PowerShell after setting `$OutputEncoding` as above. The live examples use default persistent state; include the same `--state-dir`/`--port` on every command if you override them.
 
 Only exit 0 **and** final `type: result`, `state: completed` count as success. Preserve the returned context ID for follow-ups. A server-restart restoration check must stop/restart the owned server with the same settings, then resume that saved context. Do not claim an OS-reboot test from a server restart.
 
@@ -116,7 +187,7 @@ On missing history, failed login, input-required state, or timeout, report the a
 
 ## 7. Preserve state and report completion
 
-Normal macOS state is `~/Library/Application Support/Duorbi/conversations.sqlite3`. Precedence is `--state-dir`, then `DUORBI_STATE_DIR`, then the platform default. Both Duorbi mappings and Antigravity's own history must survive to resume conversations. The canonical project path is part of the identity. See [storage and restoration](docs/architecture.md).
+Normal state directories are macOS `~/Library/Application Support/Duorbi`, Windows `%LOCALAPPDATA%\Duorbi` (fallback `~/AppData/Local/Duorbi`), and other POSIX `$XDG_STATE_HOME/duorbi` (fallback `~/.local/state/duorbi`). The database is `conversations.sqlite3` inside. Precedence is `--state-dir`, then `DUORBI_STATE_DIR`, then the platform default. Use a private local state directory. POSIX creates mode-0700 directories and mode-0600 files. Python 3.13+ applies Windows ACL handling to newly created mode-0700 directories; file mode 0600 alone does not make Windows files private, and existing directory/profile permissions are not rewritten. Both Duorbi mappings and Antigravity's own history must survive to resume conversations. The canonical project path is part of the identity. See [storage and restoration](docs/architecture.md).
 
 Report these separately:
 

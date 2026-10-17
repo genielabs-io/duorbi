@@ -13,11 +13,21 @@ def state_directory(directory=None, *, environ=None, home=None, platform=None):
     if not selected:
         if platform == 'darwin':
             selected = home / 'Library' / 'Application Support' / 'Duorbi'
+        elif platform == 'win32':
+            selected = Path(environ.get('LOCALAPPDATA') or home / 'AppData' / 'Local') / 'Duorbi'
         else:
             selected = Path(environ.get('XDG_STATE_HOME') or home / '.local' / 'state') / 'duorbi'
-    path = Path(selected)
-    if str(path) == '~' or str(path).startswith('~/'):
-        path = home / str(path)[2:] if str(path) != '~' else home
+    # Expand before Path normalizes separators on native Windows. In particular,
+    # honor the supplied home rather than Path.expanduser()'s process environment.
+    selected = os.fspath(selected)
+    windows_separators = platform == 'win32' or os.name == 'nt'
+    if selected == '~':
+        path = home
+    elif selected.startswith('~/') or (windows_separators and selected.startswith('~\\')):
+        suffix = selected[2:]
+        if windows_separators:
+            suffix = suffix.replace('\\', '/')
+        path = home / suffix.lstrip('/')
     else:
-        path = path.expanduser()
+        path = Path(selected).expanduser()
     return path.resolve()

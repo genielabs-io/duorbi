@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — source version 0.1.0
+
+- Add native Windows state paths, byte-range locks and Job Object process-tree containment while retaining macOS paths, locks and graceful cleanup.
+- Preserve literal argv and UTF-8 pipes; require native `agy.exe` on Windows.
+- Configure macOS/Windows Python 3.13/3.14 source and installed-wheel CI, with portable fake-CLI HTTP/restart and Unicode coverage. See [verification scope](docs/verification.md) for executed checks.
+- Add PowerShell installation and local verification instructions. No new release or tag is created.
+
 ## 0.1.0 — 2026-10-16 (withdrawn)
 
 First tagged GitHub release of Duorbi. The release, assets and tag were removed on 2026-10-17. Current installation uses the `main` branch; see [INSTALL.md](INSTALL.md).

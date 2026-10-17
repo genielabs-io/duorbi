@@ -21,7 +21,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix='duorbi-wheel-') as temporary:
         # macOS exposes the same temporary directory through /var and /private/var.
         workspace = Path(temporary).resolve()
-        python = workspace / 'venv' / 'bin' / 'python'
+        bindir = workspace / 'venv' / ('Scripts' if os.name == 'nt' else 'bin')
+        python = bindir / ('python.exe' if os.name == 'nt' else 'python')
         subprocess.run([uv, 'venv', '--python', sys.executable, str(workspace / 'venv')],
                        env=env, check=True)
         constraints = workspace / 'constraints.txt'
@@ -35,15 +36,17 @@ def main():
             shutil.copytree(root / directory, workspace / directory,
                             ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
         env['DUORBI_STATE_DIR'] = str(workspace / 'state')
+        project = workspace / 'project 한글 🙂 with spaces'
+        project.mkdir()
         probe = subprocess.run([str(python), '-c',
             'import json,duorbi; print(json.dumps({"module":duorbi.__file__}))'],
             cwd=workspace, env=env, check=True, text=True, capture_output=True)
         module_path = Path(json.loads(probe.stdout)['module']).resolve()
         if not module_path.is_relative_to(workspace / 'venv'):
             raise SystemExit('Import did not come from the installed wheel.')
-        subprocess.run([str(workspace / 'venv' / 'bin' / 'duorbi'), '--version'],
+        subprocess.run([str(bindir / ('duorbi.exe' if os.name == 'nt' else 'duorbi')), '--version'],
                        cwd=workspace, env=env, check=True)
-        subprocess.run([str(python), '-m', 'duorbi', 'info', '--project', str(workspace)],
+        subprocess.run([str(python), '-m', 'duorbi', 'info', '--project', str(project)],
                        cwd=workspace, env=env, check=True, stdout=subprocess.DEVNULL)
         subprocess.run([str(python), '-m', 'unittest', 'discover', '-s', 'tests', '-v'],
                        cwd=workspace, env=env, check=True)

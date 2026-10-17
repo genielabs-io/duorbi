@@ -6,6 +6,7 @@ import sqlite3
 import os
 from pathlib import Path
 import socket
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,39 +14,30 @@ import time
 import unittest
 import urllib.request
 
+from fake_cli import install_fake_agy
+
 class PersistentTransportTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture = tempfile.TemporaryDirectory(prefix='duorbi-fake-cli-')
+        cls.addClassCleanup(cls.fixture.cleanup)
+        cls.bindir = install_fake_agy(cls.fixture.name)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        self.project = self.root / 'project'
+        self.project = self.root / 'project 한글 🙂 with spaces'
         self.project.mkdir()
         self.state = self.root / 'state'
-        bindir = self.root / 'bin'
-        bindir.mkdir()
-        fake = bindir / 'agy'
-        fake.write_text(f'#!{sys.executable}\n' + '''import json,sys,uuid
-from pathlib import Path
-a=sys.argv
-p=Path('.fake-agy.json')
-history=json.loads(p.read_text()) if p.exists() else {}
-resume=a[a.index('--conversation')+1] if '--conversation' in a else None
-prompt=a[a.index('-p')+1]
-if resume and resume not in history:
-    print(json.dumps({'status':'ERROR','error':'conversation unavailable'}))
-    raise SystemExit(0)
-key=resume or str(uuid.uuid4())
-if not resume: history[key]=prompt
-p.write_text(json.dumps(history))
-print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[key]}))
-''')
-        fake.chmod(0o700)
-        self.env = {**os.environ, 'PATH': str(bindir) + os.pathsep + os.environ['PATH']}
+        self.env = {**os.environ, 'PATH': str(self.bindir) + os.pathsep + os.environ['PATH']}
+        resolved = Path(shutil.which('agy', path=self.env['PATH'])).resolve()
+        self.assertEqual(resolved.parent, self.bindir.resolve(), 'refusing to use a real agy')
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))
             self.port = sock.getsockname()[1]
         self.server = None
-        self.log = (self.root / 'server.log').open('w')
+        self.log = (self.root / 'server.log').open('w', encoding='utf-8')
         self.addCleanup(self.log.close)
         self.addCleanup(self.stop)
 
@@ -58,7 +50,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[ke
         self.server = subprocess.Popen(self.args('serve'), env=self.env, cwd=self.root, stdout=self.log, stderr=self.log)
         for _ in range(100):
             if self.server.poll() is not None:
-                raise AssertionError((self.root / 'server.log').read_text())
+                raise AssertionError((self.root / 'server.log').read_text(encoding='utf-8'))
             try:
                 with urllib.request.urlopen(f'http://127.0.0.1:{self.port}/.well-known/agent-card.json', timeout=1):
                     return
@@ -76,9 +68,9 @@ print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[ke
                 self.server.wait(timeout=5)
             self.server = None
 
-    def run_cli(self, command, *extra):
+    def run_cli(self, command, *extra, input_text=None):
         proc = subprocess.run(self.args(command) + list(extra), env=self.env, cwd=self.root,
-                              text=True, capture_output=True, timeout=30)
+                              text=True, encoding='utf-8', capture_output=True, timeout=30, input=input_text)
         rows = [json.loads(line) for line in proc.stdout.splitlines()]
         self.assertTrue(rows, proc.stderr)
         return proc.returncode, rows[-1]
@@ -104,6 +96,19 @@ print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[ke
         self.assertEqual(code, 0, resumed)
         self.assertEqual(resumed['response'], 'remember-FIRST')
 
+    def test_unicode_stdin_and_literal_arguments_survive_restart(self):
+        self.start()
+        prompt = '기억해 줘 🙂 "quotes" & echo SHOULD_NOT_RUN | %PATH% $(pwd) ' + 'C:\\with spaces\\'
+        code, first = self.run_cli('call', '-', '--new', input_text=prompt)
+        self.assertEqual(code, 0, first)
+        self.assertEqual(first['response'], prompt)
+        self.stop()
+        self.start()
+        code, resumed = self.run_cli('call', 'recall', '--context', first['context_id'])
+        self.assertEqual(code, 0, resumed)
+        self.assertEqual(resumed['response'], prompt)
+        self.assertFalse((self.project / 'SHOULD_NOT_RUN').exists())
+
     def test_missing_history_and_unknown_context_fail_without_model(self):
         for flags in [('--continue',), ('--context', 'unknown')]:
             code, result = self.run_cli('call', 'hello', *flags)
@@ -119,7 +124,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[ke
         self.assertFalse((self.project / '.fake-agy.json').exists())
 
     def test_import_then_restore_and_reject_cross_project_import(self):
-        (self.project / '.fake-agy.json').write_text(json.dumps({'known-agy': 'imported memory'}))
+        (self.project / '.fake-agy.json').write_text(json.dumps({'known-agy': 'imported memory'}), encoding='utf-8')
         code, result = self.run_cli('import-session', '--context', 'known-context', '--conversation', 'known-agy')
         self.assertEqual(code, 0, result)
         other = self.root / 'other-project'
@@ -145,7 +150,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[ke
             db.execute('INSERT INTO conversations VALUES (?, ?, ?, ?, ?, ?)',
                        (project, 'legacy-context', 'legacy-agy', '2026-01-01', '2026-01-01', 1))
             db.execute('PRAGMA user_version=1')
-        (self.project / '.fake-agy.json').write_text(json.dumps({'legacy-agy': 'legacy memory'}))
+        (self.project / '.fake-agy.json').write_text(json.dumps({'legacy-agy': 'legacy memory'}), encoding='utf-8')
         code, info = self.run_cli('info')
         self.assertEqual(code, 0, info)
         digest = hashlib.sha256(('antigravity:' + project).encode()).hexdigest()
@@ -153,7 +158,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':key,'response':history[ke
         self.assertEqual(info['name'], f'Antigravity A2A {digest[:16]} store {identity}')
         default = subprocess.run([sys.executable, '-m', 'duorbi', 'info', '--project', project,
                                   '--state-dir', str(self.state)], env=self.env, cwd=self.root,
-                                 text=True, capture_output=True, timeout=30)
+                                 text=True, encoding='utf-8', capture_output=True, timeout=30)
         self.assertEqual(default.returncode, 0, default.stderr)
         self.assertEqual(json.loads(default.stdout)['port'], 20000 + int(digest[:8], 16) % 20000)
         for selector in [('--continue',), ('--context', 'legacy-context')]:

@@ -1,6 +1,6 @@
 # Contributing
 
-This is a macOS preview. Keep changes scoped to the Antigravity text-collaboration adapter; discuss additional providers, desktop transports or background services before adding them.
+This is a macOS and native Windows preview. Keep changes scoped to the Antigravity text-collaboration adapter; discuss additional providers, desktop transports or background services before adding them.
 
 ## Local checks
 
@@ -14,7 +14,7 @@ uv build
 uv run --frozen python scripts/check_public.py --archives dist
 ```
 
-The tests use fake CLI executables and temporary state. They start local HTTP servers and process groups, so restricted sandboxes may require explicit permission for those operations. Do not point tests at real Antigravity history or a real Duorbi state directory.
+The tests use fake CLI executables and temporary state. They start local HTTP servers and owned process trees, so restricted sandboxes may require explicit permission for those operations. Windows fixtures use a native console executable; tests never fall through to the real `agy`. Windows uses Job Object containment and byte-range locks; preserve equivalent cleanup/locking coverage on both platforms. Do not point tests at real Antigravity history or a real Duorbi state directory.
 
 ## Installed-wheel verification
 
@@ -30,7 +30,7 @@ Build first. The verifier creates a temporary virtual environment, installs the 
 - Preserve strict resume semantics, per-context locking and cleanup before success publication.
 - Update both README languages when behavior changes. Describe tested compatibility separately from intended support.
 - Do not commit live IDs, databases, credentials, prompts, transcripts, logs, personal paths or vendored environments. The publication checker is a narrow guard, not a complete secret scanner.
-- Source/packaging changes should pass the configured macOS CI. A local check does not mean GitHub CI has executed.
+- Source/packaging changes should pass the configured macOS/Windows × Python 3.13/3.14 CI, including source tests, archive checks and clean-wheel tests. Only POSIX signal-specific cases and unavailable Windows symlink privileges may have platform-specific skips; ordinary HTTP/new/resume/restart and Unicode-path coverage must run on both operating systems. A local check does not mean GitHub CI has executed.
 
 ## Dependency updates
 

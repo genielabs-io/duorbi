@@ -42,10 +42,10 @@ Duorbi uses Antigravity's documented headless CLI. It does not connect to existi
 
 ## Status and requirements
 
-- **macOS preview, installed from `main`.** The original adapter was exercised with Antigravity CLI `agy 1.4.0`. The extracted package is checked with fake CLI integration tests and a clean wheel installation; see [verification](docs/verification.md).
-- Python **3.13+**, [uv](https://docs.astral.sh/uv/), and an installed `agy` executable on `PATH`.
+- **macOS and native Windows preview, installed from `main`.** The original adapter was exercised with Antigravity CLI `agy 1.4.0` on macOS. Automated Windows checks use a fake CLI; real Windows Antigravity authentication and collaboration still need verification. See [verification](docs/verification.md).
+- Python **3.13+**, [uv](https://docs.astral.sh/uv/), and an installed `agy` executable on `PATH`. Windows requires native `agy.exe`; `.bat` and `.cmd` launchers are rejected.
 - Authenticate using an interactive `agy` session in your project before making headless calls. Duorbi does not collect credentials or install Antigravity.
-- Linux runtime compatibility has not been verified. Native Windows is unsupported; the adapter uses POSIX file locks and process groups.
+- Linux runtime compatibility has not been verified.
 
 ## Install from this checkout
 
@@ -59,7 +59,9 @@ duorbi --version
 duorbi --help
 ```
 
-Ensure uv's tool executable directory is on your shell and Codex execution `PATH`. Alternatively, use the locked contributor environment: `uv sync --frozen`, followed by `uv run --frozen duorbi ...` from this checkout. No package-registry release is required for installation from source.
+These commands work in a POSIX shell or PowerShell. On Windows, use `Get-Command duorbi, agy` to check executable discovery. See [INSTALL.md](INSTALL.md) for PowerShell prerequisite, path and UTF-8 examples.
+
+Ensure uv's tool executable directory (`uv tool dir --bin`) is on your shell and Codex execution `PATH`. Alternatively, use the locked contributor environment: `uv sync --frozen`, followed by `uv run --frozen duorbi ...` from this checkout. No package-registry release is required for installation from source.
 
 ## First conversation
 
@@ -78,10 +80,19 @@ duorbi call 'Review this design. Do not edit files.' --new --project /absolute/p
 
 Output is newline-delimited JSON. The final `type: result` object includes `state`, `response`, `context_id` and `agent_session_id` when successful. Only **exit 0 and state `completed`** indicate success. Exit 2 indicates failure/incomplete work; exit 3 represents upstream input-required state, which this adapter cannot resolve through an approval relay. Invalid command syntax uses argparse's exit 2.
 
-Read long prompts from stdin to avoid shell interpolation:
+The examples above use POSIX paths; in PowerShell, replace them with a quoted absolute Windows project path. Use the same project and state settings in both terminals. Read long prompts from stdin to avoid shell interpolation:
 
 ```sh
 duorbi call - --new --project /absolute/path/to/project < review-request.txt
+```
+
+In PowerShell, explicitly send UTF-8 and use a literal here-string (the closing `'@` must start its own line):
+
+```powershell
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+@'
+Review this design. Do not edit files. Preserve literal $variables.
+'@ | duorbi call - --new --project 'C:\projects\my-project'
 ```
 
 ## Resume after restart
@@ -114,11 +125,12 @@ Codex starts a matching server when needed and stops servers it owns after the t
 
 ## Storage and boundaries
 
-Default macOS database:
+Default state directories (the database is `conversations.sqlite3` inside):
 
-```text
-~/Library/Application Support/Duorbi/conversations.sqlite3
-```
+| Platform | Directory |
+|---|---|
+| macOS | `~/Library/Application Support/Duorbi` |
+| Windows | `%LOCALAPPDATA%\Duorbi`, falling back to `~/AppData/Local/Duorbi` |
 
 Other POSIX systems use `$XDG_STATE_HOME/duorbi` or `~/.local/state/duorbi` as the state directory. Override with `DUORBI_STATE_DIR` or `--state-dir` (highest priority). Use the same directory on server and client commands. `duorbi info --project PATH` reports the resolved settings.
 
@@ -136,7 +148,7 @@ uv build
 uv run --frozen python scripts/check_public.py --archives dist
 ```
 
-Tests use temporary directories, SQLite and a fake `agy` executable, including real local HTTP and a full server restart. They require no account or model calls. See [CONTRIBUTING.md](CONTRIBUTING.md) for clean-wheel checks.
+Tests use temporary directories, SQLite and a fake CLI executable, including real local HTTP and a full server restart. CI is configured for macOS and Windows on Python 3.13/3.14. They require no account or model calls; configured coverage is distinct from a completed CI run. See [CONTRIBUTING.md](CONTRIBUTING.md) for clean-wheel checks.
 
 ## License and dependencies
 

@@ -1,3 +1,4 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,7 +14,13 @@ class BridgeTests(unittest.TestCase):
             root = Path(tmp) / 'project with spaces'
             root.mkdir()
             alias = Path(tmp) / 'alias'
-            alias.symlink_to(root, target_is_directory=True)
+            try:
+                alias.symlink_to(root, target_is_directory=True)
+            except (OSError, NotImplementedError) as exc:
+                if os.name == 'nt' and (isinstance(exc, NotImplementedError)
+                                       or getattr(exc, 'winerror', None) in (1, 50, 1314)):
+                    self.skipTest(f'directory symlink unavailable: {exc}')
+                raise
             a = self.bridge.project_settings(root, None)
             b = self.bridge.project_settings(alias, None)
             self.assertEqual(a, b)

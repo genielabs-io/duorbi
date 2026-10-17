@@ -28,13 +28,16 @@ State selection, highest priority first:
 1. `--state-dir PATH` on each command.
 2. Environment variable `DUORBI_STATE_DIR`.
 3. macOS: `~/Library/Application Support/Duorbi`.
-4. Other POSIX: `$XDG_STATE_HOME/duorbi`, falling back to `~/.local/state/duorbi`.
+4. Windows: `%LOCALAPPDATA%\Duorbi`, falling back to `~/AppData/Local/Duorbi`.
+5. Other POSIX: `$XDG_STATE_HOME/duorbi`, falling back to `~/.local/state/duorbi`.
 
-The directory contains `conversations.sqlite3`, possible SQLite WAL/SHM companions and a `locks/` subdirectory. The store uses SQLite WAL and FULL synchronization. New directories are created with mode 0700; the database and lock files with mode 0600. Existing directory permissions are not rewritten. Use a private local directory.
+Platform defaults are alternatives, not fallbacks between operating systems.
+
+The directory contains `conversations.sqlite3`, possible SQLite WAL/SHM companions and a `locks/` subdirectory. The store uses SQLite WAL and FULL synchronization. On POSIX, new directories use mode 0700 and database/lock files use mode 0600. On Windows, Python 3.13+ applies its mode-0700 directory ACL handling to newly created private state directories; file mode 0600 alone does not establish a private Windows ACL. Existing profile/directory permissions are not rewritten. Use a private local directory with suitable ACLs.
 
 Stored fields are canonical project path, context ID, agy conversation ID, creation/update timestamps and last-use ordering. A metadata table holds a persistent store UUID. The Agent Card incorporates a digest of the store directory and UUID. No prompt, answer, credential, approval state or interrupted-task payload is stored by this database.
 
-Locks are held for the full turn. Concurrent requests for the same project/context fail instead of racing. The OS releases locks after process exit or reboot; lock files can remain without indicating an active request. Independent contexts can run concurrently.
+POSIX uses `flock`; Windows uses a byte-range file lock. Locks are held for the full turn. Concurrent requests for the same project/context fail instead of racing. The OS releases locks after process exit or reboot; lock files can remain without indicating an active request. Independent contexts can run concurrently.
 
 ## What survives a restart
 
@@ -42,7 +45,7 @@ Completed mappings survive. A fresh backend reads SQLite even when the upstream 
 
 Interrupted tasks, approval prompts and exactly-once model effects are outside this feature. A crash after Antigravity responds but before the DB commit can leave an unrecorded new conversation. A resumed turn can have affected Antigravity history even if a later cleanup/save fails. Do not blindly repeat a timed-out request.
 
-The agy execution budget is 180 seconds, with a 10-second process-exit allowance. The client defaults to 210 seconds. Client timeout alone does not cancel server work. Cleanup targets the invocation's process group: TERM with up to 5 seconds to finish, then KILL if required. Stop only server processes you own.
+The agy execution budget is 180 seconds, with a 10-second process-exit allowance. The client defaults to 210 seconds. Client timeout alone does not cancel server work. On POSIX, cleanup targets the invocation's process group: TERM with up to 5 seconds to finish, then KILL if required. On Windows, a parent-owned, non-inherited Job Object contains the runner and its descendants. The Python runner waits for a launch token until assignment to the job, so agy cannot start outside containment. Cleanup terminates the job tree, including descendants left after the direct child exits; kill-on-close also applies if the owning parent exits. Windows requires a native `agy.exe` and rejects `.bat`/`.cmd` wrappers. All platforms pass literal argument lists without a shell and decode JSON pipes as UTF-8. Stop only server processes you own.
 
 ## Application envelope
 

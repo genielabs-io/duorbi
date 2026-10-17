@@ -1,4 +1,4 @@
-name: macOS package checks
+name: macOS and Windows package checks
 
 on:
   push:
@@ -10,10 +10,11 @@ permissions:
 
 jobs:
   verify:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [macos-latest, windows-latest]
         python: ['3.13', '3.14']
     steps:
       - uses: actions/checkout@v4

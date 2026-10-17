@@ -1,7 +1,6 @@
 """Durable project-scoped A2A -> agy conversation mappings, never transcripts."""
-from contextlib import closing, contextmanager
+from contextlib import closing
 from datetime import datetime, timezone
-import fcntl
 import hashlib
 import os
 from pathlib import Path
@@ -11,6 +10,7 @@ from uuid import uuid4
 
 
 from .paths import state_directory
+from .file_locks import exclusive_lock
 
 
 class SessionStore:
@@ -84,15 +84,6 @@ class SessionStore:
         except sqlite3.IntegrityError as exc:
             raise ValueError('Conversation ID already belongs to another project/context') from exc
 
-    @contextmanager
     def claim(self, project, context):
         digest = hashlib.sha256(f'{self.project(project)}\0{context}'.encode()).hexdigest()
-        fd = os.open(self.locks / digest, os.O_CREAT | os.O_RDWR, 0o600)
-        try:
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError as exc:
-                raise RuntimeError('A turn in this context is already running') from exc
-            yield
-        finally:
-            os.close(fd)  # releases the lock even after an exception
+        return exclusive_lock(self.locks / digest)

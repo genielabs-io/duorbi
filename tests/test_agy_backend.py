@@ -106,11 +106,12 @@ print(json.dumps({'status':'SUCCESS','conversation_id':'session1',
             self.assertNotIn('PRIVATE', str(caught.exception))
 
     async def test_same_context_parallel_turn_is_rejected(self):
-        backend = AgyBackend('.', command=['unused'])
+        backend = AgyBackend('.', command=[sys.executable])
         backend.active.add('ctx')
         with self.assertRaisesRegex(RuntimeError, 'already running'):
             await backend.drive(Collector(), RunRequest('test', context_id='ctx'))
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX process group and signal semantics')
     async def test_cleanup_removes_descendant_after_leader_exits(self):
         with tempfile.TemporaryDirectory() as tmp:
             pidfile = Path(tmp) / 'child.pid'
@@ -140,6 +141,7 @@ print(json.dumps({'status':'SUCCESS','conversation_id':'session1',
             finally:
                 await stop_process(proc)
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX process group and signal semantics')
     async def test_orphaned_descendant_can_finish_sigterm_handler(self):
         with tempfile.TemporaryDirectory() as tmp:
             ready, done = Path(tmp) / 'ready', Path(tmp) / 'done'
@@ -171,6 +173,7 @@ while True: time.sleep(.05)
             finally:
                 await stop_process(proc)
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX process group and signal semantics')
     async def test_uncooperative_process_is_killed_after_grace(self):
         with tempfile.TemporaryDirectory() as tmp:
             ready = Path(tmp) / 'ready'
@@ -207,8 +210,12 @@ while True: time.sleep(.05)
                 with self.assertRaises(asyncio.CancelledError):
                     await task
                 self.assertFalse(backend.active)
-                with self.assertRaises(ProcessLookupError):
-                    os.kill(int(ready.read_text()), 0)
+                if os.name == 'nt':
+                    from duorbi.win32_jobs import process_is_running
+                    self.assertFalse(process_is_running(int(ready.read_text())))
+                else:
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(int(ready.read_text()), 0)
             finally:
                 if not task.done():
                     task.cancel()
@@ -217,6 +224,7 @@ while True: time.sleep(.05)
                     except asyncio.CancelledError:
                         pass
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX process group and signal semantics')
     async def test_cancellation_during_cleanup_still_kills_and_reaps_process(self):
         with tempfile.TemporaryDirectory() as tmp:
             ready = Path(tmp) / 'ready'
