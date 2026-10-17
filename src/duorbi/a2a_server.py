@@ -80,6 +80,8 @@ class DuorbiExecutor(AgentExecutor):
                     metadata = {'agent_session_id': value['conversation_id']}
                     if value.get('num_turns') is not None:
                         metadata['num_turns'] = value['num_turns']
+                    if value.get('requested_model') is not None:
+                        metadata['requested_model'] = value['requested_model']
                     answer = value['response']
                     await updater.add_artifact([Part(text=answer)], name='response', last_chunk=True)
                     await updater.complete(updater.new_agent_message([Part(text=answer)], metadata=metadata))

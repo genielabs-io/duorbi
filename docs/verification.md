@@ -89,3 +89,19 @@ Before live calls, every stored row and metadata entry matched the SQLite backup
 Two authorized real Antigravity calls then completed using the original saved context and agy conversation IDs. The first recalled earlier review findings. After a full server shutdown/restart, `--continue` selected the same conversation and recalled a marker without the prompt repeating it. All existing mappings, store UUID and creation timestamps remained intact; unrelated rows were unchanged. Owned verification servers were stopped afterward.
 
 This is manual macOS evidence, separate from the fake-CLI CI matrix. It does not validate actual OS reboot or live Windows authentication/restoration. Private machine paths, actual IDs, prompts, transcripts, database snapshots and environments are intentionally excluded from this repository.
+
+## Per-turn model selection — 2026-10-18
+
+The model-selection candidate adds `call --model MODEL_ID` through a version-2 application envelope. Calls without a model retain version 1. The SQLite schema, project identity and native process ownership paths are unchanged.
+
+On macOS with CPython 3.13.2, both the source suite and the clean installed-wheel suite discovered 108 tests: 96 passed and 12 Windows-only cases were skipped. The existing Mac/Windows Python 3.13/3.14 CI matrix runs the new portable tests, including exact model argv, malformed selections, Gemini-to-Claude switching across full HTTP server restarts, omitted selection and unavailable-model failure without fallback. Four local common-launcher checks also passed. Source/archive guards and wheel/sdist builds passed.
+
+Three authorized real A2A turns used the installed common launcher on macOS with `agy 1.4.0`:
+
+1. Start a new conversation with `gemini-3.8-flash-medium` and remember a harmless verification marker.
+2. Stop/restart the owned server and resume the saved context with `claude-sonnet-5-5-high`; recall the exact marker without repeating it in the prompt.
+3. Stop/restart again and resume with `--continue`, omitting `--model`; recall the marker again with no `requested_model` claim.
+
+All three exited 0 with `completed`, substantive answers and the same A2A context and agy conversation IDs. Selected turns reported the exact `requested_model`; this records the argv request, not independent provider attestation. Turn counts advanced 1→2→3. Every pre-existing conversation row, store metadata and schema version remained unchanged; only one new verification conversation was added. Owned servers were stopped afterward.
+
+This is manual macOS evidence. Live Windows authentication/model switching and actual OS reboot remain unverified. Account model availability can differ; use `agy models` rather than assuming these example IDs are available. Actual IDs, markers, transcripts, state snapshots and local paths remain private.

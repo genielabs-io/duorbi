@@ -133,7 +133,7 @@ class AgyBackend:
         from .agy_request import decode_request
         if not context_id:
             raise ValueError('A2A context ID is required')
-        text, expected = decode_request(prompt)
+        text, expected, model = decode_request(prompt)
         with self.store.claim(self.cwd, context_id):
             saved = self.store.get(self.cwd, context_id)
             if expected is not None:
@@ -143,9 +143,9 @@ class AgyBackend:
                     raise ValueError('In-memory and saved conversation IDs disagree')
             elif saved is not None or resume:
                 raise ValueError('New conversation requested with an existing context')
-            return await self._run(text, context_id=context_id, resume=expected)
+            return await self._run(text, context_id=context_id, resume=expected, model=model)
 
-    async def _run(self, prompt, *, context_id, resume=None):
+    async def _run(self, prompt, *, context_id, resume=None, model=None):
         context = context_id
         if context in self.active:
             raise RuntimeError('A turn in this context is already running')
@@ -154,6 +154,8 @@ class AgyBackend:
         try:
             command = [*self.command, '-p', prompt, '--output-format', 'json',
                        '--mode', 'plan', '--print-timeout', f'{self.timeout}s']
+            if model is not None:
+                command.extend(['--model', model])
             if resume:
                 command.extend(['--conversation', resume])
             proc = await spawn_owned_process(command, cwd=self.cwd)
@@ -170,4 +172,8 @@ class AgyBackend:
         # update the executor's conversation mapping for a failed cleanup.
         if self.store is not None:
             self.store.save(self.cwd, context, value['conversation_id'])
+        # This describes argv selection, not provider-reported model identity.
+        value.pop('requested_model', None)
+        if model is not None:
+            value['requested_model'] = model
         return value

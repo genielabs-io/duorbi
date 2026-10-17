@@ -42,6 +42,8 @@ The role resolves the actual target project's absolute path, checks `info` and `
 
 If an unrelated process occupies the derived port, choose another `--port` and pass it to every server/client command. Do not stop another task's server. If using a custom state directory, pass the same `--state-dir` or environment setting everywhere.
 
+When the user specifies Gemini or Claude, inspect `agy models` and pass an available exact ID as `duorbi call ... --model MODEL_ID`. Do not put the model name in the prompt as a substitute for selection. Use the same saved `--context` to change perspective within a discussion, or `--new` for an independent review. Omission leaves the choice to agy; pin a model by supplying it each turn. `--continue` does not filter by model. See [model selection](../README.md#choose-gemini-or-claude) for version compatibility and requested-model metadata.
+
 Codex should treat Antigravity's answer as a collaborator's advice, verify substantive claims and make its own final judgment. Failed calls must be reported as failures. A locally produced answer must never be attributed to Antigravity without a successful actual call.
 
 ## Korean prompts

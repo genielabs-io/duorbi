@@ -95,6 +95,22 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 '@ | duorbi call - --new --project 'C:\projects\my-project'
 ```
 
+## Gemini·Claude 모델 선택
+
+`agy models`로 로그인한 Antigravity 계정에서 사용할 수 있는 모델 ID를 확인하고, 호출에 `--model`을 지정합니다.
+
+```sh
+agy models
+duorbi call '이 설계를 검토해 줘. 파일은 수정하지 마.' --new --model gemini-4-argon-high --project /absolute/path/to/project
+duorbi call '다른 관점에서 검토해 줘. 파일은 수정하지 마.' --context SAVED_CONTEXT_ID --model claude-sonnet-5-5-high --project /absolute/path/to/project
+```
+
+위 ID는 예시이며 계정·요금제에 따라 다릅니다. PowerShell에서도 같은 옵션을 사용하고 프로젝트는 따옴표로 감싼 Windows 절대경로로 바꾸세요. 선택값은 A2A를 거쳐 `agy --model`로 전달됩니다. Claude도 Antigravity를 통해 실행되며 정상 사용량이 적용됩니다. 사용할 수 없는 ID는 오류를 반환하고 다른 모델로 대체하지 않습니다.
+
+`--model`은 해당 턴의 선택입니다. 같은 `--context`로 모델을 바꿔도 대화 ID는 유지합니다. 모델을 고정하려면 매번 지정하세요. 생략하면 agy의 저장된 모델·기본 동작을 따르며, Gemini를 강제한다는 뜻은 아닙니다. `--continue`는 모델별이 아닌 프로젝트 전체의 최근 대화입니다. 독립적인 검토는 context ID를 따로 보관하세요.
+
+성공 응답의 `requested_model`은 agy에 전달한 요청 ID이며 실제 제공 모델에 대한 독립적인 증명은 아닙니다. 모델을 지정한 호출은 v2 요청을 사용하므로 서버도 업그레이드해야 합니다. 구형 서버는 모델 선택을 무시하는 대신 요청을 거부합니다. 생략한 호출의 v1 형식과 기존 DB는 유지됩니다.
+
 ## 재시작·재부팅 후 이어가기
 
 서버는 Ctrl+C로 종료합니다. 같은 프로젝트·저장소 설정으로 서버를 다시 시작한 뒤:

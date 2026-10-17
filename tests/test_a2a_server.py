@@ -29,6 +29,16 @@ def states(queue):
 
 
 class ExecutorTests(unittest.IsolatedAsyncioTestCase):
+    async def test_requested_model_is_forwarded_as_request_metadata_not_attestation(self):
+        backend = AsyncMock()
+        backend.run.return_value = {'response': 'review', 'conversation_id': 'agy-id',
+                                    'requested_model': 'claude-sonnet-5-5-high'}
+        queue = Queue()
+        await DuorbiExecutor(backend).execute(context(), queue)
+        metadata = queue.events[-1].status.message.metadata
+        self.assertEqual(metadata['requested_model'], 'claude-sonnet-5-5-high')
+        self.assertNotIn('actual_model', metadata)
+
     async def test_exact_text_and_provider_neutral_session_metadata(self):
         answer = '  exact\n한글 🙂\n'
         backend = AsyncMock()

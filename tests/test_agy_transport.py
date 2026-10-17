@@ -96,6 +96,58 @@ class PersistentTransportTests(unittest.TestCase):
         self.assertEqual(code, 0, resumed)
         self.assertEqual(resumed['response'], 'remember-FIRST')
 
+    def test_selected_models_and_omission_cross_a2a_and_restart_with_same_ids(self):
+        first = None
+        for model in ['gemini-4-argon-high', 'claude-sonnet-5-5-high', None]:
+            self.start()
+            extra = ['--model', model] if model else []
+            if first:
+                code, result = self.run_cli('call', 'recall', '--context', first['context_id'], *extra)
+            else:
+                code, result = self.run_cli('call', 'model-switch-marker 한글 🙂', '--new', *extra)
+            self.assertEqual(code, 0, result)
+            self.assertEqual(result['state'], 'completed')
+            self.assertEqual(result['response'], 'model-switch-marker 한글 🙂')
+            if model:
+                self.assertEqual(result['requested_model'], model)
+            else:
+                self.assertNotIn('requested_model', result)
+            if first:
+                self.assertEqual(result['context_id'], first['context_id'])
+                self.assertEqual(result['agent_session_id'], first['agent_session_id'])
+            else:
+                first = result
+            self.stop()
+        self.assertEqual(json.loads((self.project / '.fake-models.json').read_text()),
+                         ['gemini-4-argon-high', 'claude-sonnet-5-5-high', None])
+        _, listed = self.run_cli('sessions')
+        self.assertEqual(len(listed['sessions']), 1)
+
+    def test_unavailable_model_does_not_fallback_or_change_saved_mapping(self):
+        self.start()
+        code, first = self.run_cli('call', 'keep-history', '--model', 'gemini-4-argon-high')
+        self.assertEqual(code, 0, first)
+        _, before = self.run_cli('sessions')
+        code, failed = self.run_cli('call', 'recall', '--context', first['context_id'],
+                                    '--model', 'fixture-unavailable')
+        self.assertEqual(code, 2, failed)
+        self.assertEqual(failed['state'], 'failed')
+        self.assertEqual(failed['response'], '')
+        self.assertNotIn('requested_model', failed)
+        _, after = self.run_cli('sessions')
+        self.assertEqual(after, before)
+        self.assertEqual(json.loads((self.project / '.fake-models.json').read_text()),
+                         ['gemini-4-argon-high', 'fixture-unavailable'])
+        self.assertEqual(len((self.project / '.fake-invocations').read_text().splitlines()), 2)
+
+    def test_invalid_model_fails_before_server_or_cli(self):
+        proc = subprocess.run(self.args('call') + ['review', '--model', 'bad model'],
+                              env=self.env, cwd=self.root, text=True, encoding='utf-8',
+                              capture_output=True, timeout=10)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn('model', proc.stderr.lower())
+        self.assertFalse((self.project / '.fake-invocations').exists())
+
     def test_unicode_stdin_and_literal_arguments_survive_restart(self):
         self.start()
         prompt = '기억해 줘 🙂 "quotes" & echo SHOULD_NOT_RUN | %PATH% $(pwd) ' + 'C:\\with spaces\\'

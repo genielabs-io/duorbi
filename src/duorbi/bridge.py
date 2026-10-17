@@ -99,7 +99,8 @@ async def call(args, settings):
             raise ValueError('No saved conversation for this context/project; inspect sessions or import-session')
     if saved:
         args.context = saved['context_id']
-    prompt = encode_request(prompt, saved['conversation_id'] if saved else None)
+    prompt = encode_request(prompt, saved['conversation_id'] if saved else None,
+                            model=getattr(args, 'model', None))
     await inspect_card(settings)
     message = Message(message_id=uuid4().hex, role=Role.ROLE_USER,
                       parts=[Part(text=prompt)])
@@ -118,6 +119,8 @@ async def call(args, settings):
             result['agent_session_id'] = session
         if 'num_turns' in metadata:
             result['num_turns'] = metadata['num_turns']
+        if 'requested_model' in metadata:
+            result['requested_model'] = metadata['requested_model']
         result['detail'] = detail
         result['permission'] = None
         if result['state'] == 'completed':
@@ -174,7 +177,10 @@ def parser():
             cmd.add_argument('--context', required=True, help='Known A2A context ID from an earlier verified result')
             cmd.add_argument('--conversation', required=True, help='Actual agy conversation ID from that result')
         if name == 'call':
+            from .agy_request import validate_model
             cmd.add_argument('text', help='Message; use - to read stdin')
+            cmd.add_argument('--model', type=validate_model, metavar='MODEL_ID',
+                             help='Per-turn agy model ID (see agy models); omitted preserves agy behavior')
             selector = cmd.add_mutually_exclusive_group()
             selector.add_argument('--context', help='Context ID returned by a previous call')
             selector.add_argument('--continue', dest='continue_latest', action='store_true',

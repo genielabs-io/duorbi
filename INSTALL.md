@@ -191,6 +191,16 @@ Stop only the server you started, using its handle or Ctrl+C. Once stopped, remo
 
 Run this scenario only when real model calls are authorized; the examples below use three model turns. If authentication is needed, let the user complete it privately first. For Codex integration, run the scenario from a fresh Codex chat using the installed local instructions so that executable visibility and role discovery are checked in the actual agent environment. If the role is unavailable, record that separately from a successful direct CLI fallback.
 
+### Optional model selection
+
+`agy models` lists the IDs available to the signed-in account without a model inference call. If the user wants Gemini or Claude, select an available exact ID and append `--model MODEL_ID` to the `duorbi call` commands below, including recall turns when pinning the model. For example, `--model gemini-4-argon-high` or `--model claude-sonnet-5-5-high`; these are examples, not guaranteed account entitlements. Do not change the user's default model or choose an unavailable model silently. IDs must be 1–128 ASCII letters/digits/period/underscore/hyphen and start with a letter/digit.
+
+To verify switching, use an available Gemini ID for the first turn and an available Claude ID for a recall turn after server restart. Require the original context/agy IDs and exact marker, plus the selected turn's `requested_model`. This field records the argv request, not independent proof of provider identity. Record the actual model IDs used privately. If Claude is unavailable, report the failed/unverified check; do not substitute Gemini.
+
+Selection is per turn. Omission retains agy's saved/default behavior and does not force Gemini. `--continue` remains project-wide, not model-specific. Use saved explicit context IDs when several model discussions exist. Both server and client must be upgraded for selected calls: they use a v2 envelope that an older server rejects. Unselected calls keep v1; no conversation database migration is needed. Unsupported model IDs fail without fallback.
+
+### Live and restart scenario
+
 Start a server owned by this check using the user's intended persistent state settings, with the agy PATH setup above in its launch process. Do not reuse the temporary `CHECK_STATE` from step 5. In a managed terminal, run `duorbi serve --project "$PROJECT_DIR"`; from the client, require `duorbi status --project "$PROJECT_DIR"` to exit 0 with `state: ready`. Use the resolved absolute Duorbi executable if it is not on PATH. Keep the same project, state directory and port on all server/client commands. If a matching server belongs to another task, do not stop it for this scenario; use an available alternate port consistently.
 
 **First two turns:** start a new test conversation and recall its marker. Replace the sample marker with a fresh harmless string for each run. Save both `context_id` and `agent_session_id` from the first successful final result privately, then substitute that context ID below.

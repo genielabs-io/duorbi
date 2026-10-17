@@ -6,7 +6,7 @@
 2. The client checks the server's Agent Card against both project and store identity. A port collision or mismatched `--state-dir` is rejected before sending the prompt. This is an accidental-routing check, not authentication.
 3. The CLI sends an A2A request with a versioned application envelope inside the message's text part.
 4. The backend acquires an OS lock for this project/context, validates new/resume intent against SQLite, then invokes installed `agy` without a shell.
-5. `agy -p TEXT --output-format json --mode plan --print-timeout 180s` runs in the target project. A resumed call adds the exact stored `--conversation ID`; the bridge never uses agy's global `--continue` flag.
+5. `agy -p TEXT --output-format json --mode plan --print-timeout 180s` runs in the target project. Explicit per-turn selection adds `--model MODEL_ID` as literal argv. A resumed call adds the exact stored `--conversation ID`; the bridge never uses agy's global `--continue` flag.
 6. The backend accepts only normal process exit, `SUCCESS`, response text and the expected conversation ID. It finishes process cleanup and commits the mapping before publishing success.
 
 Duorbi implements a small text-only executor and assembles the server using the official `a2a-sdk` 1.2.2 request handler, routes and task events. The SDK implements the A2A protocol; Duorbi owns the Antigravity connection and application lifecycle. The adapter uses headless JSON, not ACP. The card advertises text review and streaming, without push notifications or tool-approval relay.
@@ -58,6 +58,16 @@ A2A is the transport; Duorbi requires this application-specific text payload. Th
 ```
 
 Resume payloads use `intent: "resume"`, the saved agy ID in `conversation_id`, and the matching A2A `context_id`. This prevents a missing store row from silently starting a new conversation. The backend removes the envelope before passing the text to agy. Raw text-only calls from another A2A client are rejected. The initial integration target is the bundled CLI, not arbitrary A2A clients.
+
+With `call --model MODEL_ID`, the client sends version 2 with an additional required `model` field:
+
+```json
+{"version":2,"intent":"new","conversation_id":null,"text":"Review this design.","model":"claude-sonnet-5-5-high"}
+```
+
+The server accepts v1 without a model or v2 with a validated CLI model slug. A model in v1, missing/invalid model in v2, or unknown version is rejected before launching agy. An older server rejects v2, preventing silent loss of a model selection. Upgrade the actual server runtime as well as the client. A v2 request resumes the same stored conversation and acquires the same project/context lock; no schema conversion is required.
+
+Duorbi does not resolve aliases, select provider defaults, probe entitlements or retry a failed selection on another model. Use `agy models` for available IDs; agy validates account access. If no model is supplied, argv stays unchanged and agy owns saved/default selection. Pin a model by specifying it on every turn. No model preference is stored in Duorbi's SQLite database, and `--continue` remains project-wide. Successful selected requests add `requested_model` to A2A completion metadata and CLI output. This identifies requested argv selection, not independently verified provider identity. Plan mode, process containment and tool permissions are unchanged.
 
 ## Import and migration
 

@@ -95,6 +95,22 @@ Review this design. Do not edit files. Preserve literal $variables.
 '@ | duorbi call - --new --project 'C:\projects\my-project'
 ```
 
+## Choose Gemini or Claude
+
+Use `agy models` to list the model IDs available to your signed-in Antigravity account. Pass an exact ID on each call you want to select explicitly:
+
+```sh
+agy models
+duorbi call 'Review this design. Do not edit files.' --new --model gemini-4-argon-high --project /absolute/path/to/project
+duorbi call 'Give another perspective. Do not edit files.' --context SAVED_CONTEXT_ID --model claude-sonnet-5-5-high --project /absolute/path/to/project
+```
+
+The IDs above are examples; availability depends on your account and plan. The same flags work in PowerShell with your quoted Windows project path. Selection travels over A2A to `agy --model`; Claude runs through Antigravity, using its normal allowance. Unsupported IDs fail without a fallback model.
+
+`--model` selects this turn and does not create a new conversation when used with `--context` or `--continue`. To pin a model, pass it on every turn. Omitting it keeps agy's saved/default behavior; it does not mean Gemini. `--continue` still selects the project's latest conversation across all models. Keep separate context IDs for independent reviews.
+
+Successful selected calls include `requested_model`, which records the ID passed to agy, not independent provider attestation. Explicit selection requires an updated server: older servers reject the version-2 request rather than ignoring the choice. Calls without selection retain the original version-1 format and existing database.
+
 ## Resume after restart
 
 Stop your server with Ctrl+C. Start it again with the same project and state settings, then:

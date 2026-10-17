@@ -16,6 +16,13 @@ def main():
     sys.stdout.reconfigure(encoding='utf-8')
     a=sys.argv
     with Path('.fake-invocations').open('a') as calls: calls.write(str(os.getpid()) + chr(10))
+    model=a[a.index('--model')+1] if '--model' in a else None
+    model_log=Path('.fake-models.json')
+    models=json.loads(model_log.read_text()) if model_log.exists() else []
+    model_log.write_text(json.dumps([*models,model]))
+    if model == 'fixture-unavailable':
+        print(json.dumps({'status':'ERROR','error':'unknown model'}))
+        return
     p=Path('.fake-agy.json')
     history=json.loads(p.read_text(encoding='utf-8')) if p.exists() else {}
     resume=a[a.index('--conversation')+1] if '--conversation' in a else None
