@@ -64,16 +64,23 @@ async def signal_group(pid, sig):
     except ProcessLookupError:
         return False
     except PermissionError:
-        # macOS may report EPERM as the last group member is reaped. Only
-        # suppress it if an OS process listing confirms the group is gone;
-        # a real permission denial for a live group must still surface.
-        check = await asyncio.create_subprocess_exec(
-            '/bin/ps', '-axo', 'pgid=', stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL)
-        groups, _ = await check.communicate()
-        if check.returncode or str(pid).encode() in groups.split():
-            raise
-        return False
+        # macOS may report EPERM while the last group member is being reaped.
+        # Its PGID can still appear in the first process listing. Check up to
+        # four times, with 50 ms between probes, suppressing the error only
+        # after a successful listing proves the group is gone. A persistently
+        # live group or failed probe must still surface as a cleanup failure.
+        for attempt in range(4):
+            check = await asyncio.create_subprocess_exec(
+                '/bin/ps', '-axo', 'pgid=', stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL)
+            groups, _ = await check.communicate()
+            if check.returncode:
+                raise
+            if str(pid).encode() not in groups.split():
+                return False
+            if attempt < 3:
+                await asyncio.sleep(.05)
+        raise
     return True
 
 

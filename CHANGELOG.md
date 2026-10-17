@@ -3,6 +3,7 @@
 ## Unreleased — source version 0.1.0
 
 - Replace a2acode with a Duorbi text executor and server assembly using the official A2A Python SDK. Preserve existing conversation IDs, SQLite schema, CLI commands and Mac/Windows process handling.
+- Recheck disappearing macOS process groups after transient EPERM during cleanup, while retaining errors for live groups or failed process listings.
 - Use provider-neutral result metadata and advertise only supported text-collaboration capabilities.
 - Update SDK license provenance, packaged notices, architecture and upgrade instructions.
 

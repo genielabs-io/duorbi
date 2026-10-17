@@ -6,9 +6,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
 
-from duorbi.agy_backend import AgyBackend, parse_result, stop_process
+from duorbi.agy_backend import AgyBackend, parse_result, signal_group, stop_process
 
 
 class AgyTests(unittest.IsolatedAsyncioTestCase):
@@ -235,6 +236,54 @@ while True: time.sleep(.05)
                 self.assertEqual(proc.returncode, -signal.SIGKILL)
             finally:
                 await stop_process(proc, grace=.1)
+
+
+@unittest.skipIf(os.name == 'nt', 'POSIX process group EPERM race')
+class SignalGroupTests(unittest.IsolatedAsyncioTestCase):
+    def listing(self, groups, returncode=0):
+        return SimpleNamespace(returncode=returncode,
+                               communicate=AsyncMock(return_value=(groups, b'')))
+
+    async def test_eperm_rechecks_group_that_disappears_after_first_listing(self):
+        denied = PermissionError(1, 'Operation not permitted')
+        present, gone = self.listing(b' 12345\n'), self.listing(b' 99999\n')
+        with patch('duorbi.agy_backend.os.killpg', side_effect=denied) as kill, \
+             patch('duorbi.agy_backend.asyncio.create_subprocess_exec',
+                   new=AsyncMock(side_effect=[present, gone])) as probe:
+            try:
+                result = await signal_group(12345, signal.SIGTERM)
+            except PermissionError:
+                self.fail('Group disappearance after transient EPERM was not rechecked')
+        self.assertFalse(result)
+        self.assertEqual(probe.await_count, 2)
+        kill.assert_called_once_with(12345, signal.SIGTERM)
+
+    async def test_eperm_for_persistently_live_group_is_not_suppressed(self):
+        denied = PermissionError(1, 'Operation not permitted')
+        with patch('duorbi.agy_backend.os.killpg', side_effect=denied), \
+             patch('duorbi.agy_backend.asyncio.create_subprocess_exec',
+                   new=AsyncMock(return_value=self.listing(b'12345\n'))) as probe:
+            with self.assertRaises(PermissionError) as caught:
+                await asyncio.wait_for(signal_group(12345, 0), 1)
+        self.assertIs(caught.exception, denied)
+        self.assertLessEqual(probe.await_count, 5, 'EPERM retries must be bounded')
+
+    async def test_eperm_is_not_suppressed_when_process_listing_fails(self):
+        denied = PermissionError(1, 'Operation not permitted')
+        with patch('duorbi.agy_backend.os.killpg', side_effect=denied), \
+             patch('duorbi.agy_backend.asyncio.create_subprocess_exec',
+                   new=AsyncMock(return_value=self.listing(b'', returncode=1))) as probe:
+            with self.assertRaises(PermissionError) as caught:
+                await signal_group(12345, signal.SIGTERM)
+        self.assertIs(caught.exception, denied)
+        self.assertEqual(probe.await_count, 1)
+
+    async def test_eperm_requires_successful_listing_to_confirm_disappearance(self):
+        with patch('duorbi.agy_backend.os.killpg', side_effect=PermissionError(1, 'denied')), \
+             patch('duorbi.agy_backend.asyncio.create_subprocess_exec',
+                   new=AsyncMock(return_value=self.listing(b'123456\n'))) as probe:
+            self.assertFalse(await signal_group(12345, signal.SIGTERM))
+        self.assertEqual(probe.await_count, 1)
 
 
 if __name__ == '__main__':
