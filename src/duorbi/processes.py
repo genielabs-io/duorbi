@@ -1,6 +1,7 @@
 """Contain subprocess trees before launching CLI code on either platform."""
 import asyncio
 import os
+from pathlib import Path
 import sys
 
 
@@ -27,6 +28,18 @@ class OwnedWindowsProcess:
         return getattr(self.process, name)
 
 
+async def _reap_windows_process(proc):
+    try:
+        # wait() alone can complete before Proactor stdout/stderr transports
+        # close, particularly after a cancelled communicate(). Drain both pipes
+        # and explicitly release handles before returning ownership to callers.
+        await asyncio.wait_for(proc.communicate(), 5)
+    finally:
+        # asyncio Process has no public close(). Its CPython transport owns the
+        # process/pipe handles and must also close on a failed drain.
+        proc._transport.close()
+
+
 async def stop_windows_process(proc):
     if proc.job.closed:
         return
@@ -40,7 +53,7 @@ async def stop_windows_process(proc):
     finally:
         # Even a failed termination/query must release the last owner handle.
         proc.job.close()
-        await asyncio.wait_for(proc.wait(), 5)
+        await _reap_windows_process(proc)
 
 
 async def spawn_owned_process(command, *, cwd):
@@ -51,9 +64,14 @@ async def spawn_owned_process(command, *, cwd):
         if not str(command[0]).lower().endswith('.exe'):
             raise ValueError('Windows requires a native .exe executable; .cmd/.bat wrappers are unsupported')
         job = Job()
-        # Isolated mode excludes the target project's cwd/PYTHONPATH, so it
-        # cannot shadow the trusted launch gate before Job assignment.
-        argv = [sys.executable, '-I', '-m', 'duorbi.windows_runner', *command]
+        # Windows venv python.exe is a redirector: it can create the real
+        # interpreter before the parent assigns the redirector PID to its Job.
+        # That pre-existing interpreter does not retroactively join the Job.
+        # Launch the base interpreter directly so proc.pid owns the actual gate.
+        # The gate is stdlib-only; its absolute file path needs no venv imports.
+        # -I excludes project cwd/PYTHONPATH and preserves the trusted gate.
+        runner = str(Path(__file__).with_name('windows_runner.py').resolve())
+        argv = [sys._base_executable, '-I', runner, *command]
         options = {'stdin': asyncio.subprocess.PIPE}
     else:
         argv = command
@@ -95,7 +113,7 @@ async def spawn_owned_process(command, *, cwd):
                         # Close before waiting: an assigned descendant can keep
                         # runner pipes open even after the runner is dead.
                         job.close()
-                        await asyncio.wait_for(proc.wait(), 5)
+                        await _reap_windows_process(proc)
                     else:
                         from .agy_backend import stop_process
                         await stop_process(proc)

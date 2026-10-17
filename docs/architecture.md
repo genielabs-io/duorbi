@@ -47,6 +47,8 @@ Interrupted tasks, approval prompts and exactly-once model effects are outside t
 
 The agy execution budget is 180 seconds, with a 10-second process-exit allowance. The client defaults to 210 seconds. Client timeout alone does not cancel server work. On POSIX, cleanup targets the invocation's process group: TERM with up to 5 seconds to finish, then KILL if required. On Windows, a parent-owned, non-inherited Job Object contains the runner and its descendants. The Python runner waits for a launch token until assignment to the job, so agy cannot start outside containment. Cleanup terminates the job tree, including descendants left after the direct child exits; kill-on-close also applies if the owning parent exits. Windows requires a native `agy.exe` and rejects `.bat`/`.cmd` wrappers. All platforms pass literal argument lists without a shell and decode JSON pipes as UTF-8. Stop only server processes you own.
 
+On Windows, the trusted launch gate runs with the base CPython executable and an absolute path to Duorbi's stdlib-only runner, in isolated (`-I`) mode. A virtual environment's `python.exe` can be a redirector that starts another interpreter before the parent can assign its PID to a Job. Using the base executable ensures the assigned PID is the process that waits for the launch token; the target command remains unchanged and can still use its own virtual environment.
+
 ## Application envelope
 
 A2A is the transport; Duorbi requires this application-specific text payload. The launcher builds it automatically:

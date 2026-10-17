@@ -5,7 +5,8 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock, patch
 
 
 class ProcessTests(unittest.IsolatedAsyncioTestCase):
@@ -48,15 +49,35 @@ class ProcessTests(unittest.IsolatedAsyncioTestCase):
                     await proc.wait()
 
     async def test_runner_passes_literal_argv_after_launch_token(self):
+        from duorbi import windows_runner
         literal = '한글 😀 $(touch X) & echo "quote"'
         proc = await asyncio.create_subprocess_exec(
-            sys.executable, '-m', 'duorbi.windows_runner', sys.executable, '-c',
-            'import json,sys;print(json.dumps(sys.argv[1:]))', literal,
+            sys._base_executable, '-I', str(Path(windows_runner.__file__).resolve()),
+            sys.executable, '-c', 'import json,sys;print(json.dumps(sys.argv[1:]))', literal,
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
         stdout, stderr = await proc.communicate(b'duorbi-launch-v1\n')
         self.assertEqual(proc.returncode, 0, stderr)
         self.assertEqual(json.loads(stdout), [literal])
+
+    async def test_windows_runner_bypasses_virtualenv_redirector(self):
+        from duorbi.processes import spawn_owned_process
+        fake_job = Mock(closed=False)
+        fake_process = Mock(pid=1234, stdin=Mock(drain=AsyncMock()))
+        create = AsyncMock(return_value=fake_process)
+        with patch('duorbi.processes.os', SimpleNamespace(name='nt')), \
+                patch.dict(sys.modules, {'duorbi.win32_jobs': SimpleNamespace(Job=lambda: fake_job)}), \
+                patch('duorbi.processes.sys._base_executable', 'C:/base/python.exe'), \
+                patch('duorbi.processes.sys.executable', 'C:/venv/Scripts/python.exe'), \
+                patch('asyncio.create_subprocess_exec', create):
+            await spawn_owned_process(['C:/target/agy.exe', '-p', 'hello'], cwd='.')
+        argv = create.call_args.args
+        self.assertEqual(argv[0], 'C:/base/python.exe')
+        self.assertEqual(argv[1], '-I')
+        self.assertEqual(Path(argv[2]).name, 'windows_runner.py')
+        self.assertTrue(Path(argv[2]).is_absolute())
+        self.assertEqual(argv[3:], ('C:/target/agy.exe', '-p', 'hello'))
+        fake_job.assign.assert_called_once_with(1234)
 
     async def test_runner_does_not_execute_target_without_launch_token(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -73,6 +94,20 @@ class ProcessTests(unittest.IsolatedAsyncioTestCase):
 
 @unittest.skipUnless(os.name == 'nt', 'native Windows Job Object tests')
 class WindowsProcessTests(unittest.IsolatedAsyncioTestCase):
+    async def test_job_owns_executing_runner_not_virtualenv_redirector(self):
+        from duorbi.processes import spawn_owned_process, stop_windows_process
+        # A venv python.exe is a separate redirector process on Windows. The
+        # target's real OS parent must be the PID that was assigned to our Job.
+        proc = await spawn_owned_process(
+            [sys._base_executable, '-c', 'import os;print(os.getppid())'], cwd='.')
+        try:
+            stdout, stderr = await proc.communicate()
+            self.assertEqual(proc.returncode, 0, stderr)
+            self.assertEqual(int(stdout), proc.pid,
+                             'Job owns a redirector instead of the executing runner')
+        finally:
+            await stop_windows_process(proc)
+
     async def test_job_handle_is_non_inheritable_and_close_kills_descendants(self):
         from duorbi.processes import spawn_owned_process, stop_windows_process
         with tempfile.TemporaryDirectory() as tmp:
@@ -176,7 +211,13 @@ class WindowsProcessTests(unittest.IsolatedAsyncioTestCase):
             real_create = asyncio.create_subprocess_exec
             async def delayed_create(*args, **kwargs):
                 proc = await real_create(*args, **kwargs)
+                original_drain = proc.stdin.drain
+                first_drain = True
                 async def drain():
+                    nonlocal first_drain
+                    if not first_drain:
+                        return await original_drain()
+                    first_drain = False
                     # The token is already written: wait until the target exists
                     # before suspending the handshake and cancelling its owner.
                     for _ in range(500):
