@@ -63,4 +63,15 @@ Local Apple Silicon macOS / CPython 3.14.7 checks passed: 94 tests discovered, 8
 
 New coverage includes real REST and JSON-RPC calls, exact response/session metadata, legacy metadata fallback, same-context HTTP contention, explicit SDK cancellation, repeated cancellation during cleanup, completion/cancellation races, disconnected-stream continuation, mixed-part rejection, failed cleanup without artifact/save, and application lifespan shutdown with a real fake-CLI process tree. The POSIX-only open-stream SIGTERM test verifies bounded HTTP draining before shutdown; portable lifespan and Job Object tests cover Windows ownership separately. Existing lock, state-path, legacy/imported-store and native process tests remain in the suite.
 
-These local results do not establish native Windows execution. The four-job remote matrix must be checked for this migration's commit. Real Antigravity authentication/model restoration on Windows, native Windows ARM64, Linux and actual OS reboot remain unverified. The migration tests use fake CLI fixtures and make no real model calls.
+Candidate commit `0d70de71074288be9df23fb3db7b7fb525404cdd` passed all four jobs in [GitHub Actions run 39010185657](https://github.com/genielabs-io/duorbi/actions/runs/39010185657):
+
+| Runner / Python | Source suite | Clean installed-wheel suite |
+|---|---|---|
+| macOS / 3.13 | 94 discovered: 82 passed, 12 Windows-only skips | Passed, same counts |
+| macOS / 3.14 | 94 discovered: 82 passed, 12 Windows-only skips | Passed, same counts |
+| Windows x64 / 3.13 | 94 discovered: 88 passed, 6 POSIX-only skips | Passed, same counts |
+| Windows x64 / 3.14 | 94 discovered: 88 passed, 6 POSIX-only skips | Passed, same counts |
+
+Every job passed source/archive guards and built both distributions. All four installed-wheel probes confirmed official SDK 1.2.2 and no `a2acode`. The new portable cancellation, same-context contention, disconnect and lifespan process-tree cases ran on both operating systems; only the actual SIGTERM/open-stream test is POSIX-specific.
+
+Real Antigravity authentication/model restoration on Windows, native Windows ARM64, Linux and actual OS reboot remain unverified. The migration tests use fake CLI fixtures and make no real model calls.
