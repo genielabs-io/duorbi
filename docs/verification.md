@@ -36,4 +36,19 @@ Coverage includes actual loopback HTTP new/resume calls, full server restart, Un
 
 Configured tests are not proof of a completed CI run. Current remote results are available in the repository's [Actions tab](https://github.com/genielabs-io/duorbi/actions); record the exact commit and results when validating a candidate. Historical counts above do not describe the current test suite.
 
+### Recorded cross-platform result — 2026-10-17
+
+Candidate commit `1e9fad009f55b5c50cd5be833b51e634d1a98349` passed all four jobs in [GitHub Actions run 39007826697](https://github.com/genielabs-io/duorbi/actions/runs/39007826697):
+
+| Runner / Python | Source suite | Clean installed-wheel suite |
+|---|---|---|
+| macOS / 3.13 | 75 discovered: 63 passed, 12 Windows-only skips | Passed, same counts |
+| macOS / 3.14 | 75 discovered: 63 passed, 12 Windows-only skips | Passed, same counts |
+| Windows x64 / 3.13 | 75 discovered: 70 passed, 5 POSIX-only skips | Passed, same counts |
+| Windows x64 / 3.14 | 75 discovered: 70 passed, 5 POSIX-only skips | Passed, same counts |
+
+Every job also passed source/archive guards and built the wheel/source archive. Windows Job containment, owner death, cancellation during startup/handshake/cleanup, process-lock contention/crash release, new-directory ACLs, Unicode paths/stdin and server-restart restoration were exercised. The successful Windows logs contained no unclosed-transport warnings or orphan-process termination messages. Local Apple Silicon macOS source and clean-wheel checks also passed on CPython 3.13.2; local source checks on CPython 3.14.7 passed. No real model calls were made.
+
+The first Windows candidate exposed the virtual-environment Python redirector containment issue; the recorded successful candidate launches the base interpreter directly and closes Proactor pipe transports. That failure was fixed, not skipped. Native ARM64 Windows and Linux were not exercised by this matrix.
+
 Real Windows `agy.exe` discovery, interactive authentication and model conversation restoration require a separate live check and have not been validated by the fake CLI suite. An actual OS reboot and Linux runtime support are also unverified. A successful server restart does not establish an OS-reboot test.

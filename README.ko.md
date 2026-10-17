@@ -42,7 +42,7 @@ Antigravity가 문서로 제공하는 headless CLI를 사용합니다. 기존 �
 
 ## 준비
 
-- **`main` 소스에서 설치하는 macOS·Windows 네이티브 시험판**, Python **3.13 이상**, [uv](https://docs.astral.sh/uv/).
+- **`main` 소스에서 설치하는 macOS·Windows 네이티브 시험판**, CPython **3.13 이상**, [uv](https://docs.astral.sh/uv/).
 - `PATH`에서 실행할 수 있는 Antigravity CLI `agy`. Windows에서는 네이티브 `agy.exe`가 필요하며 `.bat`·`.cmd` 실행기는 거부합니다. 원래 어댑터는 macOS에서 `agy 1.4.0`으로 실제 협업을 검증했습니다. Windows 자동 검증은 가짜 CLI를 사용하며 실제 Antigravity 로그인·협업은 아직 검증하지 않았습니다. [검증 범위](docs/verification.md)를 확인하세요.
 - 작업할 프로젝트에서 대화형 `agy`를 실행해 로그인을 먼저 완료합니다. Duorbi는 인증정보를 수집하거나 Antigravity를 설치하지 않습니다.
 - Linux 실행은 아직 검증하지 않았습니다.

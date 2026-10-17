@@ -2,7 +2,7 @@
 
 This is an installation runbook for Codex or another coding agent. Follow the user's requested scope and your host's approval rules. This document does not grant extra permissions. Use authorization already given; ask only for missing decisions or access.
 
-**Supported baseline:** macOS or native Windows, Python 3.13+, uv, and authenticated Antigravity CLI `agy` (`agy.exe` on Windows). Duorbi is a preview installed from `main`; its package version remains 0.1.0. Linux is unverified. Automated Windows coverage uses a fake CLI; real Windows Antigravity login/collaboration is a separate, not-yet-verified check. See [verification](docs/verification.md).
+**Supported baseline:** macOS or native Windows, CPython 3.13+, uv, and authenticated Antigravity CLI `agy` (`agy.exe` on Windows). Duorbi is a preview installed from `main`; its package version remains 0.1.0. Linux is unverified. Automated Windows coverage uses a fake CLI; real Windows Antigravity login/collaboration is a separate, not-yet-verified check. See [verification](docs/verification.md).
 
 ## 1. Establish the target and scope
 
