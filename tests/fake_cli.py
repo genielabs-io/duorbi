@@ -30,7 +30,10 @@ def main():
         if control.get('child'):
             child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)'],
                                    stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-        Path('.fake-pids.json').write_text(json.dumps({'owner':os.getpid(),'child':child.pid if child else None}))
+        # Publish readiness only after the full PID payload is written.
+        marker=Path('.fake-pids.json.tmp')
+        marker.write_text(json.dumps({'owner':os.getpid(),'child':child.pid if child else None}))
+        marker.replace('.fake-pids.json')
         while not Path('.fake-release').exists(): time.sleep(.02)
     if control.get('status', 'SUCCESS') != 'SUCCESS':
         print(json.dumps({'status':control['status'],'error':'fixture failure'}))
