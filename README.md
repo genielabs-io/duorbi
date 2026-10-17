@@ -6,7 +6,7 @@
 
 **Two agents. One continuing conversation.**
 
-A local A2A bridge for Codex and Antigravity. Let Codex lead a design discussion or code review, ask the installed Antigravity CLI for another perspective, and resume that same conversation after restarting the bridge.
+A local A2A bridge for Codex and Antigravity, built on [a2acode](https://github.com/kanywst/a2acode). Let Codex lead a design discussion or code review, ask the installed Antigravity CLI for another perspective, and resume that same conversation after restarting the bridge.
 
 **Install with your coding agent**
 
@@ -140,4 +140,4 @@ Tests use temporary directories, SQLite and a fake `agy` executable, including r
 
 ## License and dependencies
 
-Duorbi code and documentation: [MIT](LICENSE). The A2A server is the separately installed **[a2acode](https://github.com/kanywst/a2acode) 0.8.0**, licensed under Apache-2.0. Upstream source is not vendored or modified. See [third-party notices](THIRD_PARTY_NOTICES.md).
+Duorbi code and documentation: [MIT](LICENSE). The A2A server is the separately installed **[a2acode](https://github.com/kanywst/a2acode) 0.8.0**, licensed under Apache-2.0. Duorbi adds the Antigravity adapter, CLI and project conversation storage; the A2A server comes from a2acode. Upstream source is not vendored or modified. Both the wheel and source archive include [third-party notices](THIRD_PARTY_NOTICES.md) and the [upstream license text](licenses/a2acode-LICENSE.txt). See the [distribution review](docs/license-review.md) for scope and redistribution requirements.

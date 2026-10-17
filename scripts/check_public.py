@@ -13,10 +13,11 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 PRIVATE_PARTS = {'state', 'runtime', 'logs', 'backups', 'upstream', '.venv',
                  '__pycache__', '.git', '.aws'}
-SOURCE_DIRS = ('src', 'tests', 'scripts', 'docs', 'examples', 'assets', '.github')
+SOURCE_DIRS = ('src', 'tests', 'scripts', 'docs', 'examples', 'assets', 'licenses', '.github')
 SOURCE_FILES = ('README.md', 'README.ko.md', 'INSTALL.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                 'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md',
-                'pyproject.toml', 'uv.lock', '.gitignore')
+                'pyproject.toml', 'uv.lock', '.gitignore', 'licenses/a2acode-LICENSE.txt')
+LICENSE_PAYLOADS = ('LICENSE', 'THIRD_PARTY_NOTICES.md', 'licenses/a2acode-LICENSE.txt')
 PERSONAL_PATH = re.compile(r'/(?:Users|Volumes)/')
 PRIVATE_KEY = re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----')
 
@@ -41,19 +42,34 @@ def check_member(name, content, *, link=False):
 def check_archive(path):
     path = Path(path)
     issues = []
+    payloads = set()
     if path.suffix == '.whl' or zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as archive:
             for member in archive.infolist():
                 if not member.is_dir():
                     link = (member.external_attr >> 16) & 0o170000 == 0o120000
-                    issues.extend(check_member(member.filename, archive.read(member), link=link))
+                    content = archive.read(member)
+                    if content.strip():
+                        payloads.add(member.filename)
+                    issues.extend(check_member(member.filename, content, link=link))
     else:
         with tarfile.open(path) as archive:
             for member in archive:
                 if member.isdir():
                     continue
                 content = archive.extractfile(member).read() if member.isfile() else b''
+                if content.strip():
+                    payloads.add(member.name)
                 issues.extend(check_member(member.name, content, link=not member.isfile()))
+    if path.name.startswith('duorbi-'):
+        if path.suffix == '.whl':
+            version = path.name.split('-')[1]
+            prefix = f'duorbi-{version}.dist-info/licenses/'
+        else:
+            prefix = path.name.removesuffix('.tar.gz') + '/'
+        for name in LICENSE_PAYLOADS:
+            if prefix + name not in payloads:
+                issues.append(f'{path.name}: missing or empty license/notice payload {name}')
     return issues
 
 

@@ -9,7 +9,7 @@ description = "Project-scoped local A2A text collaboration with Antigravity (mac
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "licenses/a2acode-LICENSE.txt"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -43,6 +43,7 @@ include = [
   "/tests/*.py",
   "/examples/**",
   "/assets/**",
+  "/licenses/**",
   "/docs/**",
   "/scripts/*.py",
   "/README.md",

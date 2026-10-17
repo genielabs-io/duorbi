@@ -6,7 +6,7 @@
 
 **두 에이전트, 계속 이어지는 대화.**
 
-Codex가 주도하고 Antigravity가 설계 논의와 코드 검토에 참여하는 로컬 A2A 브리지입니다. 프로젝트별 대화 ID를 저장해 서버를 다시 시작해도 같은 논의를 이어갑니다.
+[a2acode](https://github.com/kanywst/a2acode)의 A2A 서버를 사용하는 로컬 브리지입니다. Codex가 주도하고 Antigravity가 설계 논의와 코드 검토에 참여합니다. 프로젝트별 대화 ID를 저장해 서버를 다시 시작해도 같은 논의를 이어갑니다.
 
 **에이전트에게 설치 맡기기**
 
@@ -139,4 +139,4 @@ uv run --frozen python scripts/check_public.py --archives dist
 
 테스트는 임시 DB와 가짜 `agy`로 로컬 HTTP·서버 재시작까지 확인하며 계정·모델 호출이 필요하지 않습니다. [기여 안내](CONTRIBUTING.md)
 
-Duorbi는 [MIT](LICENSE), 별도 의존성인 [a2acode](https://github.com/kanywst/a2acode) 0.8.0은 Apache-2.0입니다. [출처와 의존성 고지](THIRD_PARTY_NOTICES.md)를 참고하세요.
+Duorbi 자체 코드·문서는 [MIT](LICENSE), 별도 의존성인 [a2acode](https://github.com/kanywst/a2acode) 0.8.0은 Apache-2.0입니다. Duorbi가 추가한 부분은 Antigravity 어댑터, CLI와 프로젝트별 대화 저장이며, A2A 서버는 a2acode가 제공합니다. 상위 서버 소스는 포함하거나 수정하지 않습니다. wheel과 소스 압축파일 모두에 [출처·의존성 고지](THIRD_PARTY_NOTICES.md)와 [상위 라이선스 본문](licenses/a2acode-LICENSE.txt)을 포함합니다. 검토 범위와 재배포 조건은 [라이선스 검토 문서](docs/license-review.md)에 정리했습니다.

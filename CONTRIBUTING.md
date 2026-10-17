@@ -38,4 +38,4 @@ Build first. The verifier creates a temporary virtual environment, installs the 
 
 ## Release preparation
 
-Review source and built archives, run clean-wheel verification, and read the compatibility/limitations documentation. Publish only after the owner authorizes the actual remote destination and release. Never include a local research workspace, its runtime state or its Git history in a source release.
+Review source and built archives, run clean-wheel verification, and read the compatibility/limitations documentation. Preserve the MIT license, THIRD_PARTY_NOTICES and the unmodified a2acode Apache license in both wheel and source archive; the archive guard checks their presence. When upgrading dependencies or changing distribution formats, repeat the [license and distribution review](docs/license-review.md), including applicable upstream NOTICE and source-availability obligations. Publish only after the owner authorizes the actual remote destination and release. Never include a local research workspace, its runtime state or its Git history in a source release.
