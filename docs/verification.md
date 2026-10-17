@@ -59,19 +59,23 @@ Real Windows `agy.exe` discovery, interactive authentication and model conversat
 
 The current server uses official `a2a-sdk[http-server]` 1.2.2 directly. The former `a2acode` package is absent from the dependency lock and synchronized environment. SQLite schema version 1, project/store identity, default ports, CLI commands and the new/resume envelope remain unchanged; existing and imported contexts are resumed explicitly after a full server restart.
 
-Local Apple Silicon macOS / CPython 3.14.7 checks passed: 94 tests discovered, 82 passed and 12 Windows-only skips, both from the source checkout and a clean installed wheel outside the checkout. Source/archive guards and wheel/source builds passed. The clean-wheel probe reported SDK 1.2.2 and no `a2acode`. All three license/notice payloads matched checkout bytes in both archives; wheel metadata retained MIT for Duorbi and identified the SDK requirement separately.
+Local Apple Silicon macOS / CPython 3.14.7 checks passed after the cancellation fix: 98 tests discovered, 86 passed and 12 Windows-only skips, both from the source checkout and a clean installed wheel outside the checkout. CPython 3.13.2 source checks passed with the same counts. Source/archive guards and wheel/source builds passed. The clean-wheel probe reported SDK 1.2.2 and no `a2acode`. All three license/notice payloads matched checkout bytes in both archives; wheel metadata retained MIT for Duorbi and identified the SDK requirement separately.
 
 New coverage includes real REST and JSON-RPC calls, exact response/session metadata, legacy metadata fallback, same-context HTTP contention, explicit SDK cancellation, repeated cancellation during cleanup, completion/cancellation races, disconnected-stream continuation, mixed-part rejection, failed cleanup without artifact/save, and application lifespan shutdown with a real fake-CLI process tree. The POSIX-only open-stream SIGTERM test verifies bounded HTTP draining before shutdown; portable lifespan and Job Object tests cover Windows ownership separately. Existing lock, state-path, legacy/imported-store and native process tests remain in the suite.
 
-Candidate commit `0d70de71074288be9df23fb3db7b7fb525404cdd` passed all four jobs in [GitHub Actions run 39010185657](https://github.com/genielabs-io/duorbi/actions/runs/39010185657):
+Candidate commit `410e20216e73173bccb5e778ea80b9fcc9c33e30` passed all four jobs in [GitHub Actions run 39011556436](https://github.com/genielabs-io/duorbi/actions/runs/39011556436):
 
 | Runner / Python | Source suite | Clean installed-wheel suite |
 |---|---|---|
-| macOS / 3.13 | 94 discovered: 82 passed, 12 Windows-only skips | Passed, same counts |
-| macOS / 3.14 | 94 discovered: 82 passed, 12 Windows-only skips | Passed, same counts |
-| Windows x64 / 3.13 | 94 discovered: 88 passed, 6 POSIX-only skips | Passed, same counts |
-| Windows x64 / 3.14 | 94 discovered: 88 passed, 6 POSIX-only skips | Passed, same counts |
+| macOS / 3.13 | 98 discovered: 86 passed, 12 Windows-only skips | Passed, same counts |
+| macOS / 3.14 | 98 discovered: 86 passed, 12 Windows-only skips | Passed, same counts |
+| Windows x64 / 3.13 | 98 discovered: 88 passed, 10 POSIX-only skips | Passed, same counts |
+| Windows x64 / 3.14 | 98 discovered: 88 passed, 10 POSIX-only skips | Passed, same counts |
+
+The macOS / 3.14 candidate also passed 200 consecutive HTTP cancellation/process-tree cleanup checks. This followed a reproduced transient process-group EPERM during teardown; the fix confirms group disappearance before suppressing that error and preserves failures for live groups or unsuccessful probes. The fixture publishes its readiness marker atomically to prevent partial JSON reads. The temporary 200-repeat diagnostic step was then removed from the regular CI workflow.
 
 Every job passed source/archive guards and built both distributions. All four installed-wheel probes confirmed official SDK 1.2.2 and no `a2acode`. The new portable cancellation, same-context contention, disconnect and lifespan process-tree cases ran on both operating systems; only the actual SIGTERM/open-stream test is POSIX-specific.
 
 Real Antigravity authentication/model restoration on Windows, native Windows ARM64, Linux and actual OS reboot remain unverified. The migration tests use fake CLI fixtures and make no real model calls.
+
+An isolated macOS uv-tool upgrade check installed the former a2acode-based 0.1.0 wheel, registered synthetic conversation IDs and reinstalled the reviewed SDK source at the same package version using `uv tool install --reinstall`. The saved context/agy ID, store identity, card name and derived port were unchanged; a2acode was removed and SDK 1.2.2 was installed. This checked upgrade mechanics and mapping preservation, without calling a real model or changing a personal tool installation.

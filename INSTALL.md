@@ -86,6 +86,14 @@ uv may download a compatible Python and package dependencies. This installs a us
 
 If `SOURCE_DIR` already exists, inspect its origin, ref and working tree; reuse a suitable checkout. Do not reset, delete or overwrite it. If Duorbi is already installed, inspect its version and provenance; reuse a matching installation. For an authorized upgrade or replacement, review the source/version before changing it. Do not add `--force` to hide an executable conflict.
 
+For an explicitly authorized upgrade, after updating and reviewing the checkout, reinstall from that checkout even if the package version is unchanged:
+
+```sh
+uv tool install --reinstall --python 3.13 "$SOURCE_DIR"
+```
+
+This command also works in PowerShell with `$SOURCE_DIR` from step 3. Reinstalling refreshes the installed code and dependencies; it does not delete the conversation state directory. Stop an old server first and keep the same project/state settings when starting the upgraded server.
+
 The tool directory reported by `uv tool dir --bin` must be visible to the agent, not just to an interactive terminal. If it is absent from the agent's `PATH`, resolve the installed launcher in that directory and use its absolute path in **local** instructions. Do not silently edit shell startup files or put machine-specific paths into public templates. Use that resolved launcher in the remaining commands if necessary.
 
 Compare `duorbi --version` with `[project].version` in the selected checkout's `pyproject.toml`. The package version may stay unchanged across multiple `main` commits, so also retain the source commit SHA. A successful `--help` checks that the launcher can import the package.
