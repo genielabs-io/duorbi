@@ -76,6 +76,16 @@ The macOS / 3.14 candidate also passed 200 consecutive HTTP cancellation/process
 
 Every job passed source/archive guards and built both distributions. All four installed-wheel probes confirmed official SDK 1.2.2 and no `a2acode`. The new portable cancellation, same-context contention, disconnect and lifespan process-tree cases ran on both operating systems; only the actual SIGTERM/open-stream test is POSIX-specific.
 
-Real Antigravity authentication/model restoration on Windows, native Windows ARM64, Linux and actual OS reboot remain unverified. The migration tests use fake CLI fixtures and make no real model calls.
+Real Antigravity authentication/model restoration on Windows, native Windows ARM64, Linux and actual OS reboot remain unverified. The automated migration tests use fake CLI fixtures and make no real model calls.
 
 An isolated macOS uv-tool upgrade check installed the former a2acode-based 0.1.0 wheel, registered synthetic conversation IDs and reinstalled the reviewed SDK source at the same package version using `uv tool install --reinstall`. The saved context/agy ID, store identity, card name and derived port were unchanged; a2acode was removed and SDK 1.2.2 was installed. This checked upgrade mechanics and mapping preservation, without calling a real model or changing a personal tool installation.
+
+### Manual macOS launcher cutover and live continuation
+
+On 2026-10-17, a common local launcher was switched from the former adapter to a separate installed-wheel runtime built from commit `7325c5c4c0995d12a16aa01eff7eae23987fc9cc`. The installed Python modules matched that checkout byte for byte; the runtime contained SDK 1.2.2 and no `a2acode`. The existing state directory was retained rather than copied to the public package's default location.
+
+Before live calls, every stored row and metadata entry matched the SQLite backup snapshot. Four local launcher checks passed: Duorbi execution, existing project/store identity and ports, explicit state override, and independence from the caller's working directory and module search path.
+
+Two authorized real Antigravity calls then completed using the original saved context and agy conversation IDs. The first recalled earlier review findings. After a full server shutdown/restart, `--continue` selected the same conversation and recalled a marker without the prompt repeating it. All existing mappings, store UUID and creation timestamps remained intact; unrelated rows were unchanged. Owned verification servers were stopped afterward.
+
+This is manual macOS evidence, separate from the fake-CLI CI matrix. It does not validate actual OS reboot or live Windows authentication/restoration. Private machine paths, actual IDs, prompts, transcripts, database snapshots and environments are intentionally excluded from this repository.

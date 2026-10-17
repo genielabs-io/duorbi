@@ -100,6 +100,8 @@ Compare `duorbi --version` with `[project].version` in the selected checkout's `
 
 The server uses the official A2A Python SDK. When upgrading from the former integration, stop the old server and retain the same canonical project path and persistent state directory. Existing conversation IDs need no conversion. Preserve the state directory; the temporary check below is separate. See [upgrade continuity](docs/architecture.md#upgrading-from-the-former-server-integration).
 
+Updating this repository or installing Duorbi does not update an existing wrapper, custom role or agent command automatically. Inspect the launcher the agent actually invokes and switch it to the reviewed Duorbi installation. If the old launcher selected its own state directory, preserve that default or pass the same explicit `--state-dir` on every command; the public package does not discover legacy stores. Compare `info` and `sessions` before making a model call. Follow the [launcher cutover checklist](docs/architecture.md#switching-an-existing-launcher) and report repository migration and local runtime migration separately.
+
 ## 4. Integrate with Codex
 
 Read [the integration guide](docs/codex-integration.md), then inspect the templates from the selected checkout:
