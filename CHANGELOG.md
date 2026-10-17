@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 — 2026-10-16
+## 0.1.0 — 2026-10-16 (withdrawn)
 
-First tagged GitHub release of Duorbi.
+First tagged GitHub release of Duorbi. The release, assets and tag were removed on 2026-10-17. Current installation uses the `main` branch; see [INSTALL.md](INSTALL.md).
 
 - Local Codex-to-Antigravity A2A collaboration with durable project conversation IDs.
 - Explicit new, continue and selected-context calls, with strict resume validation.

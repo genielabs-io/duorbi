@@ -42,7 +42,7 @@ Antigravity가 문서로 제공하는 headless CLI를 사용합니다. 기존 �
 
 ## 준비
 
-- **0.1.0 macOS 시험판**, Python **3.13 이상**, [uv](https://docs.astral.sh/uv/).
+- **`main` 소스에서 설치하는 macOS 시험판**, Python **3.13 이상**, [uv](https://docs.astral.sh/uv/).
 - `PATH`에서 실행할 수 있는 Antigravity CLI `agy`. 원래 어댑터는 `agy 1.4.0`으로 실제 협업을 검증했습니다. 공개 패키지의 검증 범위는 [검증 문서](docs/verification.md)에 구분했습니다.
 - 작업할 프로젝트에서 대화형 `agy`를 실행해 로그인을 먼저 완료합니다. Duorbi는 인증정보를 수집하거나 Antigravity를 설치하지 않습니다.
 - Linux 실행은 아직 검증하지 않았습니다. POSIX 파일 잠금과 프로세스 그룹을 사용하므로 Windows 네이티브 실행은 지원하지 않습니다.
@@ -52,7 +52,7 @@ Antigravity가 문서로 제공하는 headless CLI를 사용합니다. 기존 �
 저장소를 복제하고 폴더에서 실행합니다.
 
 ```sh
-git clone https://github.com/genielabs-io/duorbi.git
+git clone --branch main https://github.com/genielabs-io/duorbi.git
 cd duorbi
 uv tool install --python 3.13 .
 duorbi --version

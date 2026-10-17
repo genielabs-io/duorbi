@@ -2,7 +2,7 @@
 
 This is an installation runbook for Codex or another coding agent. Follow the user's requested scope and your host's approval rules. This document does not grant extra permissions. Use authorization already given; ask only for missing decisions or access.
 
-**Supported baseline:** macOS, Python 3.13+, uv, and authenticated Antigravity CLI `agy`. Duorbi 0.1.0 is a preview. Linux is unverified; native Windows is unsupported.
+**Supported baseline:** macOS, Python 3.13+, uv, and authenticated Antigravity CLI `agy`. Duorbi is a preview installed from `main`. Linux is unverified; native Windows is unsupported.
 
 ## 1. Establish the target and scope
 
@@ -12,7 +12,7 @@ Record these before changing files:
 |---|---|
 | `PROJECT_DIR` | Existing absolute path of the project the user wants to work on. Resolve its canonical path. |
 | `SOURCE_DIR` | Separate location for the Duorbi checkout. It is not automatically the target project. |
-| Version | Use release `v0.1.0` below unless the user requests a different ref. |
+| Source ref | Use `main` below unless the user requests a different ref. Record the resolved commit SHA because `main` changes over time. |
 | Integration | For a Codex installation request, configure the target project. CLI-only requests skip step 4. Personal/global configuration requires that scope to have been requested. |
 | Live check | Run only when a real Antigravity collaboration test is authorized; it uses model allowance. |
 
@@ -44,7 +44,8 @@ Replace the two placeholder values with the paths established in step 1; quote p
 ```sh
 PROJECT_DIR='/absolute/path/to/target-project'
 SOURCE_DIR='/absolute/path/to/duorbi-checkout'
-git clone --branch v0.1.0 --depth 1 https://github.com/genielabs-io/duorbi.git "$SOURCE_DIR"
+git clone --branch main --depth 1 https://github.com/genielabs-io/duorbi.git "$SOURCE_DIR"
+git -C "$SOURCE_DIR" rev-parse HEAD
 uv tool install --python 3.13 "$SOURCE_DIR"
 uv tool dir --bin
 command -v duorbi
@@ -58,7 +59,7 @@ If `SOURCE_DIR` already exists, inspect its origin, ref and working tree; reuse 
 
 The tool directory reported by `uv tool dir --bin` must be visible to the agent, not just to an interactive terminal. If it is absent from the agent's `PATH`, resolve the installed launcher in that directory and use its absolute path in **local** instructions. Do not silently edit shell startup files or put machine-specific paths into public templates. Use that resolved launcher in the remaining commands if necessary.
 
-Expected version for the pinned release: `duorbi 0.1.0`. A successful `--help` checks that the launcher can import the package.
+Compare `duorbi --version` with `[project].version` in the selected checkout's `pyproject.toml`. The package version may stay unchanged across multiple `main` commits, so also retain the source commit SHA. A successful `--help` checks that the launcher can import the package.
 
 ## 4. Integrate with Codex
 
@@ -119,7 +120,7 @@ Normal macOS state is `~/Library/Application Support/Duorbi/conversations.sqlite
 
 Report these separately:
 
-- Source ref and installed version; resolved launcher path.
+- Source ref, resolved commit SHA and installed version; resolved launcher path.
 - Target project and integration scope; files changed or deliberately reused.
 - CLI, isolated state and transport checks: passed, failed, or not run, with reasons.
 - Authentication, live model call, role discovery and restoration checks: their actual status, including **not verified** when not exercised.
