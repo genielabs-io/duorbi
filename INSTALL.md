@@ -46,6 +46,30 @@ Get-Command duorbi -ErrorAction SilentlyContinue
 
 Resolve the native executable with `(Get-Command agy -CommandType Application).Source` and check that it ends in `.exe`. Duorbi rejects `.bat`/`.cmd` wrappers because it never starts a command shell. Use the official [Antigravity CLI setup](https://antigravity.google/docs/getting-started?tab=cli); do not substitute a wrapper when `agy.exe` is absent.
 
+### Ensure the server can find agy
+
+Duorbi resolves `agy.exe` on Windows, or `agy` on macOS, from the **server process's PATH**. Writing an absolute agy path in a role file or successfully running that executable directly does not make it discoverable by Duorbi. An absolute Duorbi launcher path solves a separate executable lookup.
+
+If agy is installed but missing from that PATH, resolve its verified executable location first. Replace the placeholders below with that location. On Windows, in the same PowerShell process that will start `duorbi serve`:
+
+```powershell
+$AGY_EXE = 'C:\path\to\verified\agy.exe'
+$env:Path = [System.IO.Path]::GetDirectoryName($AGY_EXE) + ';' + $env:Path
+(Get-Command agy.exe -CommandType Application -ErrorAction Stop).Source
+& $AGY_EXE --version
+```
+
+On macOS/POSIX:
+
+```sh
+AGY_EXE='/absolute/path/to/verified/agy'
+export PATH="$(dirname "$AGY_EXE"):$PATH"
+command -v agy
+"$AGY_EXE" --version
+```
+
+Require the resolved executable to match the verified installation. These changes affect only the current process and its children. Preserve any required PATH setup in the **local** server-launch instructions or wrapper and repeat it in a fresh agent process. Check that the managed execution session actually inherits it; a successful check in a different terminal is insufficient. Do not change global PATH or shell profiles unless requested, and do not publish personal executable paths. `AGY_EXE` above is a shell variable used to build PATH, not a Duorbi configuration option.
+
 A missing `duorbi` is expected on a new installation. Report missing prerequisites clearly. Install them only within the user's authorized scope; otherwise provide the missing step. [uv installation instructions](https://docs.astral.sh/uv/getting-started/installation/) cover uv. Obtain Antigravity CLI from its official distribution. Do not substitute Gemini CLI, `gemini -p`, an unrelated package named `agy`, or a guessed download URL.
 
 `agy --version` does not prove authentication. If login is needed, have the user run interactive `agy` in `PROJECT_DIR` and complete it privately. Never request tokens or login codes in chat, read credential stores, or run a model prompt just to probe login. Non-model installation checks can proceed before login.
@@ -165,17 +189,21 @@ Stop only the server you started, using its handle or Ctrl+C. Once stopped, remo
 
 ## 6. Optional live collaboration check
 
-When authorized and authenticated, start/reuse a matching server using the user's intended persistent state settings. Keep the same project, state directory and port on all server/client commands:
+Run this scenario only when real model calls are authorized; the examples below use three model turns. If authentication is needed, let the user complete it privately first. For Codex integration, run the scenario from a fresh Codex chat using the installed local instructions so that executable visibility and role discovery are checked in the actual agent environment. If the role is unavailable, record that separately from a successful direct CLI fallback.
+
+Start a server owned by this check using the user's intended persistent state settings, with the agy PATH setup above in its launch process. Do not reuse the temporary `CHECK_STATE` from step 5. In a managed terminal, run `duorbi serve --project "$PROJECT_DIR"`; from the client, require `duorbi status --project "$PROJECT_DIR"` to exit 0 with `state: ready`. Use the resolved absolute Duorbi executable if it is not on PATH. Keep the same project, state directory and port on all server/client commands. If a matching server belongs to another task, do not stop it for this scenario; use an available alternate port consistently.
+
+**First two turns:** start a new test conversation and recall its marker. Replace the sample marker with a fresh harmless string for each run. Save both `context_id` and `agent_session_id` from the first successful final result privately, then substitute that context ID below.
 
 macOS/POSIX: a quoted heredoc passes the prompt literally via stdin.
 
 ```sh
 duorbi call - --new --project "$PROJECT_DIR" <<'PROMPT'
-Remember the word orbit. Reply briefly. Do not edit files.
+Remember verification marker DUORBI-CHECK-7J9K. Reply briefly. Do not edit files or use tools.
 PROMPT
 # Read context_id from the successful result, then use that exact value:
 duorbi call - --context SAVED_CONTEXT_ID --project "$PROJECT_DIR" <<'PROMPT'
-What word did I ask you to remember? Do not edit files.
+What verification marker did I ask you to remember? Use conversation memory only. Do not edit files or use tools.
 PROMPT
 ```
 
@@ -184,17 +212,38 @@ PowerShell: set the pipe encoding and use single-quoted here-strings, which pres
 ```powershell
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 @'
-Remember the word orbit. Reply briefly. Do not edit files.
+Remember verification marker DUORBI-CHECK-7J9K. Reply briefly. Do not edit files or use tools.
 '@ | duorbi call - --new --project "$PROJECT_DIR"
 # Read context_id from the successful result, then use that exact value:
 @'
-What word did I ask you to remember? Do not edit files.
+What verification marker did I ask you to remember? Use conversation memory only. Do not edit files or use tools.
 '@ | duorbi call - --context SAVED_CONTEXT_ID --project "$PROJECT_DIR"
 ```
 
 For an existing UTF-8 file, use `< review-request.txt` on POSIX, or `Get-Content -Raw -Encoding UTF8 review-request.txt | duorbi call - --new --project "$PROJECT_DIR"` in PowerShell after setting `$OutputEncoding` as above. The live examples use default persistent state; include the same `--state-dir`/`--port` on every command if you override them.
 
 Only exit 0 **and** final `type: result`, `state: completed` count as success. Preserve the returned context ID for follow-ups. A server-restart restoration check must stop/restart the owned server with the same settings, then resume that saved context. Do not claim an OS-reboot test from a server restart.
+
+**Third turn, after server restart:** stop the server owned by this check and wait for it to exit. Keep the persistent state directory and Antigravity history. Start a new `duorbi serve` process with exactly the same project/state/port settings and agy PATH setup, then require `status` to report ready again. Resume using the saved context ID:
+
+macOS/POSIX:
+
+```sh
+duorbi call - --context SAVED_CONTEXT_ID --project "$PROJECT_DIR" <<'PROMPT'
+What verification marker did I ask you to remember earlier? Use conversation memory only. Do not edit files or use tools.
+PROMPT
+```
+
+PowerShell:
+
+```powershell
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+@'
+What verification marker did I ask you to remember earlier? Use conversation memory only. Do not edit files or use tools.
+'@ | duorbi call - --context SAVED_CONTEXT_ID --project "$PROJECT_DIR"
+```
+
+For both recall turns, require exit 0, final state `completed`, the **original** `context_id` and `agent_session_id`, and the exact marker in substantive response text. Do not repeat the marker in either recall prompt or provide files containing it. Empty or placeholder output such as `(no text output)` does not establish successful collaboration, even if the CLI reports completion. Confirm the saved mapping still exists with `sessions`. To check `--continue` separately, first confirm that the intended context is the project's latest saved conversation and compare the returned IDs again.
 
 On missing history, failed login, input-required state, or timeout, report the actual failure. Do not silently retry as a new conversation or attribute a local answer to Antigravity. A client timeout does not necessarily stop the server-side task; do not retry blindly. Stop an owned server when finished; leave a pre-existing server alone.
 
@@ -207,7 +256,9 @@ Report these separately:
 - Source ref, resolved commit SHA and installed version; resolved launcher path.
 - Target project and integration scope; files changed or deliberately reused.
 - CLI, isolated state and transport checks: passed, failed, or not run, with reasons.
+- agy resolution in the server process, including any process-local PATH setup and whether it works from a fresh agent session.
 - Authentication, live model call, role discovery and restoration checks: their actual status, including **not verified** when not exercised.
+- For an authorized live scenario: both saved IDs, marker recall before/after full server restart, and matching IDs on each successful result. Keep actual IDs and transcripts private.
 - Persistent state location, any remaining user action, and whether an owned server was stopped.
 
 Installation is complete when the requested CLI/configuration changes and non-model checks pass. A pending interactive login or unrequested live test must be stated explicitly; it must not be reported as verified collaboration.

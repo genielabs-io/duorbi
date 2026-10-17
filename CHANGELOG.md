@@ -7,6 +7,7 @@
 - Use provider-neutral result metadata and advertise only supported text-collaboration capabilities.
 - Update SDK license provenance, packaged notices, architecture and upgrade instructions.
 - Clarify cutover of existing agent launchers and record manual macOS live conversation continuation across the switch and server restart.
+- Document server-process agy discovery and an authorized live verification scenario checking marker recall and unchanged conversation IDs before and after server restart.
 
 - Add native Windows state paths, byte-range locks and Job Object process-tree containment while retaining macOS paths, locks and graceful cleanup.
 - Preserve literal argv and UTF-8 pipes; require native `agy.exe` on Windows.

@@ -25,6 +25,8 @@ The Antigravity launcher must resolve to native `agy.exe`; `.bat`/`.cmd` wrapper
 
 If Codex does not inherit your shell PATH, use the resolved absolute `duorbi` executable path in your local agent instructions. Do not put your personal executable path into a public copy of the template.
 
+The server must also find `agy.exe`/`agy` on its own PATH. An absolute agy path written in instructions does not configure Duorbi's backend. If needed, prepend the verified agy directory to PATH in the process that starts the server, and retain that setup in local launch instructions for fresh chats. See [server executable lookup](../INSTALL.md#ensure-the-server-can-find-agy) and the [authorized live/restart scenario](../INSTALL.md#6-optional-live-collaboration-check).
+
 ## Agent and project instructions
 
 1. Inspect [examples/antigravity-a2a.toml](../examples/antigravity-a2a.toml).
